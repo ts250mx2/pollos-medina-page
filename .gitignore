@@ -4,6 +4,14 @@ node_modules/
 *.log
 npm-debug.log*
 
+# Next.js (NO versionar: se regenera en cada build y se corrompe si se versiona)
+/.next/
+/out/
+/build
+.vercel
+*.tsbuildinfo
+next-env.d.ts
+
 # Imágenes subidas desde el panel (respáldalas aparte)
 public/uploads/**/*
 !public/uploads/**/.gitkeep

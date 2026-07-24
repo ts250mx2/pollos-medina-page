@@ -37,6 +37,7 @@ export default function AdminPage() {
   const [modalType, setModalType] = useState<"categoria" | "producto" | "sucursal" | null>(null);
   const [modalEditItem, setModalEditItem] = useState<any>(null); // null para nuevo
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [isModalSaving, setIsModalSaving] = useState(false);
 
   // Formularios en modales
   const [catNombre, setCatNombre] = useState("");
@@ -72,7 +73,7 @@ export default function AdminPage() {
   const [heroProductoId, setHeroProductoId] = useState<string>("");
   const [heroEtiqueta, setHeroEtiqueta] = useState("");
   const [heroSubtitulo, setHeroSubtitulo] = useState("");
-  const [promosList, setPromosList] = useState<any[]>([]); // { producto_id: number, etiqueta: string }[]
+  const [promosList, setPromosList] = useState<any[]>([]); // { productoId: number, etiqueta: string }[]
 
   // Cargar datos al montar
   useEffect(() => {
@@ -81,7 +82,7 @@ export default function AdminPage() {
 
   const triggerToast = (msg: string) => {
     setToastMsg(msg);
-    setTimeout(() => setToastMsg(null), 3000);
+    setTimeout(() => setToastMsg(null), 2800);
   };
 
   const verificarSesion = async () => {
@@ -154,7 +155,7 @@ export default function AdminPage() {
         setHeroEtiqueta(dDest.destacados.hero?.etiqueta || "");
         setHeroSubtitulo(dDest.destacados.hero?.subtitulo || "");
         setPromosList(dDest.destacados.promos.map((p: any) => ({
-          producto_id: p.productoId,
+          productoId: p.productoId,
           etiqueta: p.etiqueta || "",
         })));
       }
@@ -173,6 +174,7 @@ export default function AdminPage() {
     formData.append("carpeta", carpeta);
 
     try {
+      triggerToast("Subiendo imagen…");
       const res = await fetch("/api/admin/subidas", {
         method: "POST",
         body: formData,
@@ -180,7 +182,7 @@ export default function AdminPage() {
       const data = await res.json();
       if (data.ok) {
         callback(data.url);
-        triggerToast("Imagen subida con éxito.");
+        triggerToast("Imagen lista.");
       } else {
         alert(data.error || "Error al subir imagen.");
       }
@@ -195,22 +197,23 @@ export default function AdminPage() {
     setModalEditItem(cat);
     if (cat) {
       setCatNombre(cat.nombre);
-      setCatEmoji(cat.emoji);
+      setCatEmoji(cat.emoji || "");
       setCatOrden(cat.orden);
       setCatActivo(cat.activo);
     } else {
       setCatNombre("");
       setCatEmoji("");
-      setCatOrden(0);
+      setCatOrden(99);
       setCatActivo(true);
     }
   };
 
   const guardarCategoria = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsModalSaving(true);
     const body = { nombre: catNombre, emoji: catEmoji, orden: catOrden, activo: catActivo };
     const method = modalEditItem ? "PUT" : "POST";
-    const url = modalEditItem ? `/api/admin/categorias/${modalEditItem.id}` : "/api/admin/categorias";
+    const url = modalEditItem ? `/api/admin/categorias/${modalEditItem.idNumerico}` : "/api/admin/categorias";
 
     try {
       const res = await fetch(url, {
@@ -228,11 +231,19 @@ export default function AdminPage() {
       }
     } catch (err) {
       alert("Error de conexión.");
+    } finally {
+      setIsModalSaving(false);
     }
   };
 
   const borrarCategoria = async (id: number) => {
-    if (!confirm("¿Seguro que deseas eliminar esta categoría? Se borrarán todos sus productos asociados.")) return;
+    const cat = menu.find((c) => c.idNumerico === id);
+    if (!cat) return;
+    const msg = `Se borrará la categoría "${cat.nombre}"${
+      cat.productos?.length ? ` y sus ${cat.productos.length} productos` : ""
+    }. Esta acción no se puede deshacer. ¿Continuar?`;
+    if (!confirm(msg)) return;
+
     try {
       const res = await fetch(`/api/admin/categorias/${id}`, { method: "DELETE" });
       const data = await res.json();
@@ -252,7 +263,6 @@ export default function AdminPage() {
     setModalType("producto");
     setModalEditItem(prod);
     
-    // Si es un producto existente, cargar detalles completos (incluyendo opciones de la base de datos)
     if (prod) {
       try {
         const res = await fetch(`/api/admin/productos/${prod.idNumerico || prod.id}`);
@@ -279,7 +289,7 @@ export default function AdminPage() {
       setProdPrecio(0);
       setProdEtiqueta("");
       setProdImagen("");
-      setProdOrden(0);
+      setProdOrden(99);
       setProdActivo(true);
       setProdOpciones([]);
     }
@@ -307,6 +317,17 @@ export default function AdminPage() {
 
   const guardarProducto = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsModalSaving(true);
+    // Filtrar opciones válidas
+    const opcionesLimpias = prodOpciones
+      .map((g) => ({
+        etiqueta: g.etiqueta.trim(),
+        elecciones: g.elecciones
+          .map((el: any) => ({ etiqueta: el.etiqueta.trim(), extra: Number(el.extra) || 0 }))
+          .filter((el: any) => el.etiqueta),
+      }))
+      .filter((g) => g.etiqueta && g.elecciones.length);
+
     const body = {
       categoria_id: prodCategoriaId,
       nombre: prodNombre,
@@ -316,7 +337,7 @@ export default function AdminPage() {
       imagen: prodImagen,
       orden: prodOrden,
       activo: prodActivo,
-      opciones: prodOpciones,
+      opciones: opcionesLimpias,
     };
 
     const method = modalEditItem ? "PUT" : "POST";
@@ -338,11 +359,13 @@ export default function AdminPage() {
       }
     } catch (err) {
       alert("Error de conexión.");
+    } finally {
+      setIsModalSaving(false);
     }
   };
 
   const borrarProducto = async (id: number) => {
-    if (!confirm("¿Seguro que deseas eliminar este producto?")) return;
+    if (!confirm("¿Borrar este producto? No se puede deshacer.")) return;
     try {
       const res = await fetch(`/api/admin/productos/${id}`, { method: "DELETE" });
       const data = await res.json();
@@ -387,13 +410,14 @@ export default function AdminPage() {
       setSucLat("");
       setSucLng("");
       setSucImagen("");
-      setSucOrden(0);
+      setSucOrden(99);
       setSucActivo(true);
     }
   };
 
   const guardarSucursal = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsModalSaving(true);
     const body = {
       nombre: sucNombre,
       direccion: sucDireccion,
@@ -429,11 +453,16 @@ export default function AdminPage() {
       }
     } catch (err) {
       alert("Error de conexión.");
+    } finally {
+      setIsModalSaving(false);
     }
   };
 
   const borrarSucursal = async (id: number) => {
-    if (!confirm("¿Seguro que deseas eliminar esta sucursal?")) return;
+    const s = sucursales.find((x) => x.id === id);
+    if (!s) return;
+    if (!confirm(`¿Borrar la sucursal "${s.nombre}"? No se puede deshacer.`)) return;
+
     try {
       const res = await fetch(`/api/admin/sucursales/${id}`, { method: "DELETE" });
       const data = await res.json();
@@ -450,6 +479,8 @@ export default function AdminPage() {
 
   // PORTADA / DESTACADOS
   const handleGuardarHero = async () => {
+    const btn = document.getElementById("guardar-hero") as HTMLButtonElement | null;
+    if (btn) btn.disabled = true;
     try {
       const res = await fetch("/api/admin/destacados/hero", {
         method: "PUT",
@@ -462,32 +493,42 @@ export default function AdminPage() {
       });
       const data = await res.json();
       if (data.ok) {
-        triggerToast("Foto principal (hero) guardada.");
+        triggerToast("Foto principal guardada. Refresca el sitio para verla.");
         await cargarDatosPanel();
       } else {
         alert(data.error);
       }
     } catch (e) {
       alert("Error al guardar.");
+    } finally {
+      if (btn) btn.disabled = false;
     }
   };
 
   const handleGuardarPromos = async () => {
+    const btn = document.getElementById("guardar-promos") as HTMLButtonElement | null;
+    if (btn) btn.disabled = true;
+    const listaLimpia = promosList
+      .filter((p) => p.productoId)
+      .map((p) => ({ producto_id: Number(p.productoId), etiqueta: p.etiqueta }));
+
     try {
       const res = await fetch("/api/admin/destacados/promos", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(promosList),
+        body: JSON.stringify(listaLimpia),
       });
       const data = await res.json();
       if (data.ok) {
-        triggerToast("Promociones de la semana guardadas.");
+        triggerToast("Promociones guardadas. Refresca el sitio para verlas.");
         await cargarDatosPanel();
       } else {
         alert(data.error);
       }
     } catch (e) {
       alert("Error al guardar.");
+    } finally {
+      if (btn) btn.disabled = false;
     }
   };
 
@@ -496,20 +537,32 @@ export default function AdminPage() {
       alert("Solo puedes tener hasta 6 promociones.");
       return;
     }
-    // Buscar el primer producto del menu para pre-cargar
-    let primerProdId = 0;
-    for (const cat of menu) {
-      if (cat.productos && cat.productos.length > 0) {
-        primerProdId = cat.productos[0].idNumerico;
-        break;
-      }
+    const primerProdId = todosLosProductos[0]?.id || 0;
+    setPromosList([...promosList, { productoId: primerProdId, etiqueta: "" }]);
+  };
+
+  const handleClicPromos = (accion: "subir" | "bajar" | "quitar", idx: number) => {
+    const nuevas = [...promosList];
+    if (accion === "quitar") {
+      nuevas.splice(idx, 1);
+    } else if (accion === "subir" && idx > 0) {
+      const t = nuevas[idx - 1];
+      nuevas[idx - 1] = nuevas[idx];
+      nuevas[idx] = t;
+    } else if (accion === "bajar" && idx < nuevas.length - 1) {
+      const b = nuevas[idx + 1];
+      nuevas[idx + 1] = nuevas[idx];
+      nuevas[idx] = b;
     }
-    setPromosList([...promosList, { producto_id: primerProdId, etiqueta: "" }]);
+    setPromosList(nuevas);
   };
 
   // CONFIGURACION GENERAL
   const handleGuardarConfig = async (e: React.FormEvent) => {
     e.preventDefault();
+    const btn = document.getElementById("btn-guardar-config") as HTMLButtonElement | null;
+    if (btn) btn.disabled = true;
+
     const formData = new FormData(e.target as HTMLFormElement);
     const body: Record<string, string> = {};
     formData.forEach((val, key) => {
@@ -524,13 +577,15 @@ export default function AdminPage() {
       });
       const data = await res.json();
       if (data.ok) {
-        triggerToast("Configuración general guardada.");
+        triggerToast("Configuración guardada. Refresca el sitio para verla.");
         await cargarDatosPanel();
       } else {
         alert(data.error);
       }
     } catch (e) {
       alert("Error al guardar.");
+    } finally {
+      if (btn) btn.disabled = false;
     }
   };
 
@@ -560,258 +615,268 @@ export default function AdminPage() {
     }
   };
 
-  // Obtener listado plano de todos los productos de todas las categorias
+  // Aplanar listado de todos los productos de todas las categorias
   const todosLosProductos = menu.reduce((acc, cat) => {
-    return [...acc, ...(cat.productos || [])];
+    const prods = (cat.productos || []).map((p: any) => ({
+      id: p.idNumerico || p.id,
+      nombre: p.nombre,
+      categoria: cat.nombre,
+      activo: p.activo,
+    }));
+    return [...acc, ...prods];
   }, [] as any[]);
+
+  const TITULOS_CONFIG: Record<string, string> = {
+    general: "Datos del negocio",
+    contacto: "Teléfonos y WhatsApp",
+    redes: "Redes sociales",
+    avisos: "Avisos legales",
+  };
 
   if (loading) {
     return (
-      <div style={{ display: "flex", height: "100vh", alignItems: "center", justifyContent: "center", fontStyle: "italic", background: "#12100e", color: "#f5efe8" }}>
+      <div style={{ display: "flex", height: "100vh", alignItems: "center", justifyContent: "center", fontStyle: "italic", background: "#f5efe8", color: "#1a1512" }}>
         Cargando panel de administración...
       </div>
     );
   }
 
-  // Si no hay sesión iniciada, mostrar Login
+  // Si no hay sesión iniciada, mostrar Login original
   if (!usuario) {
     return (
-      <div className="admin-layout" style={{ height: "100vh", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <form className="admin-login" onSubmit={handleLogin}>
-          <div style={{ display: "flex", justifyContent: "center", marginBottom: "0.5rem" }}>
-            <img src="/assets/img/logo.png" alt="Pollo Medina" style={{ width: "90px", height: "90px" }} />
+      <div className="login" id="pantalla-login">
+        <form className="login__caja" onSubmit={handleLogin} noValidate>
+          <div className="login__logo">
+            <img src="/assets/img/logo.png" alt="Pollo Medina" width="96" height="96" />
           </div>
-          <h2>Pollo Medina</h2>
-          <p style={{ textAlign: "center", color: "var(--text-muted)", fontSize: "0.85rem", marginTop: "-1rem" }}>ADMIN PANEL LOGIN</p>
-          
-          <div className="grupo-campo">
-            <label>Usuario</label>
+          <h1>Panel de administración</h1>
+          <p className="login__sub">Pollo Medina · Desde 1989</p>
+
+          <label className="campo">
+            <span>Usuario</span>
             <input
               type="text"
+              name="usuario"
+              autoComplete="username"
               required
               autoFocus
               value={loginUsuario}
               onChange={(e) => setLoginUsuario(e.target.value)}
             />
-          </div>
+          </label>
 
-          <div className="grupo-campo">
-            <label>Contraseña</label>
+          <label className="campo">
+            <span>Contraseña</span>
             <input
               type="password"
+              name="password"
+              autoComplete="current-password"
               required
               value={loginPassword}
               onChange={(e) => setLoginPassword(e.target.value)}
             />
-          </div>
+          </label>
 
-          {loginError && <p style={{ color: "var(--danger)", fontSize: "0.85rem", fontWeight: "bold" }}>{loginError}</p>}
+          {loginError && (
+            <p className="login__error" role="alert" style={{ display: "block" }}>
+              {loginError}
+            </p>
+          )}
 
-          <button type="submit" className="btn btn--rojo" style={{ width: "100%" }}>
-            Iniciar sesión
+          <button className="btn btn--rojo btn--bloque" type="submit">
+            Entrar
           </button>
         </form>
       </div>
     );
   }
 
-  // Dashboard del administrador
+  // Dashboard original con React State
   return (
-    <div className="admin-layout">
-      <header className="admin-header">
-        <div>
-          <h1>Pollo Medina</h1>
-          <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Hola, {usuario.nombre} ({usuario.rol})</span>
+    <div className="panel" id="pantalla-panel">
+      <header className="topbar">
+        <div className="topbar__marca">
+          <strong>Pollo Medina</strong>
+          <span>Panel de administración</span>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-          <a href="/" target="_blank" rel="noopener noreferrer" style={{ color: "white", fontSize: "0.85rem", textDecoration: "underline" }}>Ver sitio ↗</a>
-          <button className="btn btn--rojo btn--sm" style={{ padding: "0.4rem 1rem", fontSize: "0.75rem" }} onClick={handleLogout}>
-            Salir
-          </button>
+        <nav className="topbar__tabs" role="tablist">
+          <button className="tab" aria-selected={tabActivo === "menu"} onClick={() => setTabActivo("menu")}>Menú</button>
+          <button className="tab" aria-selected={tabActivo === "portada"} onClick={() => setTabActivo("portada")}>Portada</button>
+          <button className="tab" aria-selected={tabActivo === "sucursales"} onClick={() => setTabActivo("sucursales")}>Sucursales</button>
+          <button className="tab" aria-selected={tabActivo === "configuracion"} onClick={() => setTabActivo("configuracion")}>Configuración</button>
+          <button className="tab" aria-selected={tabActivo === "cuenta"} onClick={() => setTabActivo("cuenta")}>Mi cuenta</button>
+        </nav>
+        <div className="topbar__acciones">
+          <a className="enlace-sitio" href="/" target="_blank" rel="noopener noreferrer">Ver el sitio ↗</a>
+          <span className="topbar__usuario" id="usuario-actual">{usuario.nombre}</span>
+          <button className="btn btn--fantasma btn--sm" id="btn-salir" onClick={handleLogout} type="button">Salir</button>
         </div>
       </header>
 
-      {/* Tabs */}
-      <nav className="admin-nav">
-        <button className={`admin-nav-tab ${tabActivo === "menu" ? "is-active" : ""}`} onClick={() => setTabActivo("menu")}>
-          Menú
-        </button>
-        <button className={`admin-nav-tab ${tabActivo === "portada" ? "is-active" : ""}`} onClick={() => setTabActivo("portada")}>
-          Portada
-        </button>
-        <button className={`admin-nav-tab ${tabActivo === "sucursales" ? "is-active" : ""}`} onClick={() => setTabActivo("sucursales")}>
-          Sucursales
-        </button>
-        <button className={`admin-nav-tab ${tabActivo === "configuracion" ? "is-active" : ""}`} onClick={() => setTabActivo("configuracion")}>
-          Configuración
-        </button>
-        <button className={`admin-nav-tab ${tabActivo === "cuenta" ? "is-active" : ""}`} onClick={() => setTabActivo("cuenta")}>
-          Mi Cuenta
-        </button>
-      </nav>
-
-      {/* Cuerpo */}
-      <main className="admin-cuerpo">
-        {/* TABS CONTENIDOS */}
+      <main className="contenido">
+        {/* ---------- VIEW: MENU ---------- */}
         {tabActivo === "menu" && (
-          <div className="admin-tab-cuerpo">
-            <div className="admin-seccion-head">
+          <section className="vista" id="vista-menu">
+            <div className="vista__head">
               <div>
-                <h2>Carta y Menú</h2>
-                <p style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>Organiza tus categorías, comidas y opciones extras.</p>
+                <h2>Menú</h2>
+                <p>Organiza categorías, productos, precios y fotos.</p>
               </div>
-              <div style={{ display: "flex", gap: "0.75rem" }}>
-                <button className="btn btn--outline" onClick={() => abrirModalCat()}>+ Categoría</button>
+              <div className="vista__acciones">
+                <button className="btn btn--negro" onClick={() => abrirModalCat()} type="button">+ Categoría</button>
+                <button className="btn btn--rojo" onClick={() => abrirModalProd(null)} type="button">+ Producto</button>
               </div>
             </div>
 
-            {menu.map((cat) => (
-              <div key={cat.idNumerico} style={{ background: "var(--surface)", border: "1.5px solid var(--border)", borderRadius: "var(--r)", padding: "1.5rem", marginBottom: "1.5rem" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1.5px solid var(--border)", paddingBottom: "0.75rem", marginBottom: "1rem" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                    <span style={{ fontSize: "1.5rem" }}>{cat.emoji}</span>
-                    <h3 style={{ textTransform: "uppercase", fontFamily: "var(--font-titulo)", fontSize: "1.3rem" }}>{cat.nombre}</h3>
-                    <span style={{ color: "var(--text-muted)", fontSize: "0.75rem" }}>({cat.productos?.length || 0} prod.)</span>
-                    {!cat.activo && <span className="etiqueta etiqueta--roja" style={{ fontSize: "0.65rem", padding: "0.1rem 0.4rem" }}>Oculta</span>}
-                  </div>
-                  <div style={{ display: "flex", gap: "0.5rem" }}>
-                    <button className="btn btn--outline" style={{ padding: "0.35rem 0.85rem", fontSize: "0.75rem" }} onClick={() => abrirModalProd(null, cat.idNumerico)}>
-                      + Producto
-                    </button>
-                    <button className="btn btn--outline" style={{ padding: "0.35rem 0.85rem", fontSize: "0.75rem" }} onClick={() => abrirModalCat(cat)}>
-                      Editar
-                    </button>
-                    <button className="btn btn--outline btn--danger" style={{ padding: "0.35rem 0.85rem", fontSize: "0.75rem" }} onClick={() => borrarCategoria(cat.idNumerico)}>
-                      Borrar
-                    </button>
-                  </div>
-                </div>
+            <div id="lista-menu" className="lista-menu">
+              {menu.map((cat) => (
+                <section key={cat.idNumerico} className="categoria" data-categoria={cat.idNumerico}>
+                  <header className="categoria__head">
+                    <span aria-hidden="true">{cat.emoji || "🍽️"}</span>
+                    <span className="categoria__nombre">{cat.nombre}</span>
+                    <span className={`chip ${cat.activo ? "chip--activo" : "chip--oculto"}`}>
+                      {cat.activo ? "Visible" : "Oculta"}
+                    </span>
+                    <span className="categoria__meta">{cat.productos?.length || 0} productos</span>
+                    <span className="categoria__acciones">
+                      <button className="btn btn--fantasma btn--sm" onClick={() => abrirModalProd(null, cat.idNumerico)}>+ Producto</button>
+                      <button className="btn btn--fantasma btn--sm" onClick={() => abrirModalCat(cat)}>Editar</button>
+                      <button className="btn btn--peligro btn--sm" onClick={() => borrarCategoria(cat.idNumerico)}>Borrar</button>
+                    </span>
+                  </header>
 
-                <div className="admin-lista-items">
-                  {cat.productos?.map((p: any) => (
-                    <div key={p.idNumerico} className="admin-lista-item">
-                      <div className="admin-lista-item__info">
-                        <img src={p.img || "/assets/img/logo.png"} alt={p.nombre} style={{ width: "50px", height: "50px", objectFit: "cover", borderRadius: "var(--r-sm)" }} />
+                  {cat.productos?.map((p: any) => {
+                    const opcionesTexto = (p.opciones || [])
+                      .map((o: any) => `${o.label}: ${(o.elecciones || []).map((e: any) => e.label).join(" / ")}`)
+                      .join(" · ");
+                    return (
+                      <div key={p.idNumerico} className="producto-fila" data-producto={p.idNumerico}>
+                        {p.img ? (
+                          <img className="miniatura" src={p.img} alt="" loading="lazy" />
+                        ) : (
+                          <div className="miniatura">🍗</div>
+                        )}
                         <div>
-                          <p className="admin-lista-item__nombre">
-                            {p.nombre}{" "}
-                            {!p.activo && <span style={{ color: "var(--danger)", fontSize: "0.75rem" }}>(Oculto)</span>}
-                          </p>
-                          <p className="admin-lista-item__detalles">
-                            Precio: <strong className="texto-rojo">{formatDinero(p.precio)}</strong>
-                            {p.tag && ` · Insignia: ${p.tag}`}
-                            {p.opciones?.length > 0 && ` · Opciones: ${p.opciones.length}`}
-                          </p>
+                          <div className="producto-fila__nombre">
+                            {p.nombre}
+                            {p.tag && <span className="chip chip--tag">{p.tag}</span>}
+                            {!p.activo && <span className="chip chip--oculto">Oculto</span>}
+                          </div>
+                          <div className="producto-fila__desc">{p.desc}</div>
+                          {opcionesTexto && <div className="producto-fila__opts">{opcionesTexto}</div>}
+                        </div>
+                        <div className="producto-fila__precio">{formatDinero(p.precio)}</div>
+                        <div className="producto-fila__acciones">
+                          <button className="btn btn--fantasma btn--sm" onClick={() => abrirModalProd(p)}>Editar</button>
+                          <button className="btn btn--peligro btn--sm" onClick={() => borrarProducto(p.idNumerico)}>Borrar</button>
                         </div>
                       </div>
-                      <div className="admin-lista-item__acciones">
-                        <button className="admin-lista-item__btn-accion" onClick={() => abrirModalProd(p)}>Editar</button>
-                        <button className="admin-lista-item__btn-accion admin-lista-item__btn-accion--danger" onClick={() => borrarProducto(p.idNumerico)}>Eliminar</button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                   {(!cat.productos || cat.productos.length === 0) && (
-                    <p style={{ fontStyle: "italic", fontSize: "0.85rem", color: "var(--text-muted)" }}>No hay productos en esta categoría.</p>
+                    <p className="vacio">Sin productos en esta categoría.</p>
                   )}
-                </div>
-              </div>
-            ))}
-          </div>
+                </section>
+              ))}
+              {menu.length === 0 && (
+                <p className="vacio">{"Todavía no hay categorías. Crea la primera con \"+ Categoría\"."}</p>
+              )}
+            </div>
+          </section>
         )}
 
+        {/* ---------- VIEW: PORTADA ---------- */}
         {tabActivo === "portada" && (
-          <div className="admin-tab-cuerpo">
-            <div className="admin-seccion-head">
+          <section className="vista" id="vista-portada">
+            <div className="vista__head">
               <div>
-                <h2>Portada y Destacados</h2>
-                <p style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>Configura la foto principal del Hero y tus promociones de la semana.</p>
+                <h2>Portada</h2>
+                <p>Elige el producto de la foto principal y las promociones de la semana.</p>
               </div>
             </div>
 
-            <div className="destacados-constructor">
-              {/* Bloque HERO */}
-              <div className="admin-tarjeta-config">
-                <h3>Foto principal (hero)</h3>
-                <p style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>Selecciona un producto y personaliza su etiqueta.</p>
-                
-                <div className="grupo-campo">
-                  <label>Seleccionar Producto</label>
-                  <select value={heroProductoId} onChange={(e) => setHeroProductoId(e.target.value)}>
-                    <option value="">-- Sin foto principal (sello de marca por defecto) --</option>
+            <div className="portada">
+              <section className="tarjeta portada__bloque" id="portada-hero">
+                <h3 className="portada__titulo">Foto principal (hero)</h3>
+                <p className="portada__ayuda">El producto que aparece grande en la portada. Se usa su foto, su nombre y su precio.</p>
+
+                <label className="campo">
+                  <span>Producto</span>
+                  <select id="hero-producto" value={heroProductoId} onChange={(e) => setHeroProductoId(e.target.value)}>
+                    <option value="">— Sin foto principal (usar diseño por defecto) —</option>
                     {todosLosProductos.map((p: any) => (
-                      <option key={p.idNumerico} value={p.idNumerico}>
-                        {p.nombre} (${p.precio})
+                      <option key={p.id} value={p.id}>
+                        {p.categoria} · {p.nombre} {!p.activo && "(oculto)"}
                       </option>
                     ))}
                   </select>
+                </label>
+
+                <div className="fila-campos">
+                  <label className="campo">
+                    <span>Cinta (arriba a la izquierda)</span>
+                    <input
+                      type="text"
+                      id="hero-etiqueta"
+                      maxLength={60}
+                      placeholder="Especialidad de la casa"
+                      value={heroEtiqueta}
+                      onChange={(e) => setHeroEtiqueta(e.target.value)}
+                    />
+                  </label>
+                  <label className="campo">
+                    <span>Texto del sello (opcional)</span>
+                    <input
+                      type="text"
+                      id="hero-subtitulo"
+                      maxLength={120}
+                      placeholder="Se usa el nombre del producto si lo dejas vacío"
+                      value={heroSubtitulo}
+                      onChange={(e) => setHeroSubtitulo(e.target.value)}
+                    />
+                  </label>
+                </div>
+                <div className="portada__acciones">
+                  <button className="btn btn--rojo" id="guardar-hero" onClick={handleGuardarHero} type="button">Guardar foto principal</button>
+                </div>
+              </section>
+
+              <section className="tarjeta portada__bloque" id="portada-promos">
+                <div className="portada__promos-head">
+                  <div>
+                    <h3 className="portada__titulo">Promociones de la semana</h3>
+                    <p className="portada__ayuda">La primera es la grande (roja). Puedes elegir hasta 6 productos.</p>
+                  </div>
+                  <button className="btn btn--negro btn--sm" id="agregar-promo" onClick={agregarPromoItem} type="button">+ Agregar promo</button>
                 </div>
 
-                <div className="grupo-campo">
-                  <label>Cinta superior (etiqueta)</label>
-                  <input
-                    type="text"
-                    maxLength={60}
-                    placeholder="Especialidad de la casa"
-                    value={heroEtiqueta}
-                    onChange={(e) => setHeroEtiqueta(e.target.value)}
-                  />
-                </div>
-
-                <div className="grupo-campo">
-                  <label>Sello (subtítulo)</label>
-                  <input
-                    type="text"
-                    maxLength={120}
-                    placeholder="Ej. Pollo + papitas o se usará el nombre"
-                    value={heroSubtitulo}
-                    onChange={(e) => setHeroSubtitulo(e.target.value)}
-                  />
-                </div>
-
-                <button type="button" className="btn btn--rojo" style={{ marginTop: "1rem" }} onClick={handleGuardarHero}>
-                  Guardar Hero
-                </button>
-              </div>
-
-              {/* Bloque PROMOS */}
-              <div className="admin-tarjeta-config">
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <h3>Promociones de la semana</h3>
-                  <button type="button" className="btn btn--outline" style={{ padding: "0.3rem 0.8rem", fontSize: "0.75rem" }} onClick={agregarPromoItem}>
-                    + Agregar promo
-                  </button>
-                </div>
-                <p style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
-                  Configura hasta 6 productos como destacados. El primero se muestra como la promoción grande destacada.
-                </p>
-
-                <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                <div id="promos-lista" className="promos-lista">
                   {promosList.map((item, idx) => (
-                    <div key={idx} style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr auto", gap: "0.75rem", alignItems: "center", background: "var(--surface-2)", padding: "0.75rem", borderRadius: "var(--r-sm)" }}>
-                      <div className="grupo-campo">
-                        <label style={{ fontSize: "0.75rem" }}>Producto</label>
+                    <div key={idx} className="promo-fila" data-fila>
+                      <span className="promo-fila__num">{idx + 1}</span>
+                      <label className="campo">
+                        <span>Producto</span>
                         <select
-                          value={item.producto_id}
+                          value={item.productoId}
                           onChange={(e) => {
                             const nuevas = [...promosList];
-                            nuevas[idx].producto_id = Number(e.target.value);
+                            nuevas[idx].productoId = Number(e.target.value);
                             setPromosList(nuevas);
                           }}
                         >
                           {todosLosProductos.map((p: any) => (
-                            <option key={p.idNumerico} value={p.idNumerico}>
-                              {p.nombre}
+                            <option key={p.id} value={p.id}>
+                              {p.categoria} · {p.nombre} {!p.activo && "(oculto)"}
                             </option>
                           ))}
                         </select>
-                      </div>
-
-                      <div className="grupo-campo">
-                        <label style={{ fontSize: "0.75rem" }}>Insignia/Tag</label>
+                      </label>
+                      <label className="campo">
+                        <span>Insignia</span>
                         <input
                           type="text"
                           maxLength={60}
-                          placeholder="El más pedido"
+                          placeholder="Ej. Rinde 6"
                           value={item.etiqueta}
                           onChange={(e) => {
                             const nuevas = [...promosList];
@@ -819,607 +884,610 @@ export default function AdminPage() {
                             setPromosList(nuevas);
                           }}
                         />
+                      </label>
+                      <div className="promo-fila__acciones">
+                        <button type="button" className="mini-btn" onClick={() => handleClicPromos("subir", idx)} title="Subir">↑</button>
+                        <button type="button" className="mini-btn" onClick={() => handleClicPromos("bajar", idx)} title="Bajar">↓</button>
+                        <button type="button" className="mini-btn mini-btn--rojo" onClick={() => handleClicPromos("quitar", idx)} title="Quitar">✕</button>
                       </div>
-
-                      <button
-                        type="button"
-                        style={{ color: "var(--danger)", marginTop: "1rem" }}
-                        onClick={() => setPromosList(promosList.filter((_, i) => i !== idx))}
-                      >
-                        ✕
-                      </button>
                     </div>
                   ))}
                   {promosList.length === 0 && (
-                    <p style={{ fontStyle: "italic", fontSize: "0.85rem", color: "var(--text-muted)" }}>No hay promociones seleccionadas en portada.</p>
+                    <p className="vacio">{"Sin promociones. Agrega productos con \"+ Agregar promo\" (la primera será la grande)."}</p>
                   )}
                 </div>
 
-                <button type="button" className="btn btn--rojo" style={{ marginTop: "1rem" }} onClick={handleGuardarPromos}>
-                  Guardar Promociones
-                </button>
-              </div>
+                <div className="portada__acciones">
+                  <button className="btn btn--rojo" id="guardar-promos" onClick={handleGuardarPromos} type="button">Guardar promociones</button>
+                </div>
+              </section>
             </div>
-          </div>
+          </section>
         )}
 
+        {/* ---------- VIEW: SUCURSALES ---------- */}
         {tabActivo === "sucursales" && (
-          <div className="admin-tab-cuerpo">
-            <div className="admin-seccion-head">
+          <section className="vista" id="vista-sucursales">
+            <div className="vista__head">
               <div>
                 <h2>Sucursales</h2>
-                <p style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>Edita, crea o elimina ubicaciones físicas del negocio.</p>
+                <p>Direcciones, teléfonos, horarios, mapa y foto de cada sucursal.</p>
               </div>
-              <button className="btn btn--rojo" onClick={() => abrirModalSuc()}>+ Sucursal</button>
+              <div className="vista__acciones">
+                <button className="btn btn--rojo" id="btn-nueva-sucursal" onClick={() => abrirModalSuc()} type="button">+ Sucursal</button>
+              </div>
             </div>
 
-            <div className="admin-lista-items">
-              {sucursales.map((s) => (
-                <div key={s.id} className="admin-lista-item">
-                  <div className="admin-lista-item__info">
-                    <img src={s.imagen || "/assets/img/logo.png"} alt={s.nombre} style={{ width: "60px", height: "60px", objectFit: "cover", borderRadius: "var(--r-sm)" }} />
-                    <div>
-                      <p className="admin-lista-item__nombre">{s.nombre}</p>
-                      <p className="admin-lista-item__detalles">
-                        {s.direccion}, {s.colonia || ""} · Tel: {s.telefono || "Sin tel."}
-                      </p>
+            <div id="lista-sucursales" className="tarjetas">
+              {sucursales.map((s) => {
+                const ubicacion = [s.direccion, s.colonia, s.ciudad].filter(Boolean).join(", ");
+                return (
+                  <article key={s.id} className="tarjeta" data-id={s.id}>
+                    <div className="tarjeta__foto">
+                      {s.imagen ? (
+                        <img src={s.imagen} alt="" loading="lazy" />
+                      ) : (
+                        "🏪"
+                      )}
                     </div>
-                  </div>
-                  <div className="admin-lista-item__acciones">
-                    <button className="admin-lista-item__btn-accion" onClick={() => abrirModalSuc(s)}>Editar</button>
-                    <button className="admin-lista-item__btn-accion admin-lista-item__btn-accion--danger" onClick={() => borrarSucursal(s.id)}>Eliminar</button>
-                  </div>
-                </div>
-              ))}
+                    <div className="tarjeta__cuerpo">
+                      <h3>
+                        {s.nombre}
+                        <span className={`chip ${s.activo ? "chip--activo" : "chip--oculto"}`}>
+                          {s.activo ? "Visible" : "Oculta"}
+                        </span>
+                      </h3>
+                      <p className="tarjeta__dato">📍 {ubicacion}</p>
+                      {s.telefono && <p className="tarjeta__dato">📞 {s.telefono}</p>}
+                      {s.horario && <p className="tarjeta__dato">🕐 {s.horario}</p>}
+                      {s.mapa_url && (
+                        <p className="tarjeta__dato">
+                          <a href={s.mapa_url} target="_blank" rel="noopener noreferrer">Ver en el mapa ↗</a>
+                        </p>
+                      )}
+                    </div>
+                    <div className="tarjeta__pie">
+                      <button className="btn btn--fantasma btn--sm" onClick={() => abrirModalSuc(s)}>Editar</button>
+                      <button className="btn btn--peligro btn--sm" onClick={() => borrarSucursal(s.id)}>Borrar</button>
+                    </div>
+                  </article>
+                );
+              })}
               {sucursales.length === 0 && (
-                <p style={{ fontStyle: "italic", fontSize: "0.85rem", color: "var(--text-muted)", textAlign: "center" }}>No hay sucursales guardadas.</p>
+                <p className="vacio">Aún no hay sucursales registradas.</p>
               )}
             </div>
-          </div>
+          </section>
         )}
 
+        {/* ---------- VIEW: CONFIGURACION ---------- */}
         {tabActivo === "configuracion" && (
-          <div className="admin-tab-cuerpo">
-            <div className="admin-seccion-head">
+          <section className="vista" id="vista-configuracion">
+            <div className="vista__head">
               <div>
-                <h2>Configuración General</h2>
-                <p style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>Variables del sitio como teléfonos, redes sociales e informativos.</p>
+                <h2>Configuración</h2>
+                <p>Teléfonos, horarios, redes sociales y avisos que aparecen en la página.</p>
+              </div>
+              <div className="vista__acciones">
+                <button className="btn btn--rojo" id="btn-guardar-config" type="submit" form="form-configuracion">Guardar cambios</button>
               </div>
             </div>
 
-            <form onSubmit={handleGuardarConfig} className="admin-formulario-grid">
-              {/* Tarjeta CONTACTO */}
-              <div className="admin-tarjeta-config">
-                <h3>Datos de Contacto</h3>
-                {configuracion
-                  .filter((item) => item.grupo === "contacto")
-                  .map((c) => (
-                    <div key={c.clave} className="grupo-campo">
-                      <label htmlFor={`config-${c.clave}`}>{c.descripcion || c.clave}</label>
-                      <input
-                        id={`config-${c.clave}`}
-                        type="text"
-                        name={c.clave}
-                        defaultValue={c.valor || ""}
-                      />
+            <form id="form-configuracion" className="config" onSubmit={handleGuardarConfig}>
+              {["general", "contacto", "redes", "avisos"].map((grupo) => {
+                const camposGrupo = configuracion.filter((c) => c.grupo === grupo);
+                if (camposGrupo.length === 0) return null;
+                return (
+                  <section key={grupo} className="config__grupo">
+                    <h3>{TITULOS_CONFIG[grupo] || grupo}</h3>
+                    <div className="config__campos">
+                      {camposGrupo.map((fila) => {
+                        const esLargo = String(fila.valor || "").length > 70;
+                        if (esLargo) {
+                          return (
+                            <label key={fila.clave} className="campo">
+                              <span>{fila.descripcion || fila.clave}</span>
+                              <textarea name={fila.clave} defaultValue={fila.valor || ""} />
+                            </label>
+                          );
+                        }
+                        return (
+                          <label key={fila.clave} className="campo">
+                            <span>{fila.descripcion || fila.clave}</span>
+                            <input type="text" name={fila.clave} defaultValue={fila.valor || ""} />
+                            <small>{fila.clave}</small>
+                          </label>
+                        );
+                      })}
                     </div>
-                  ))}
-              </div>
-
-              {/* Tarjeta GENERAL Y AVISOS */}
-              <div className="admin-tarjeta-config">
-                <h3>Configuración General y Leyendas</h3>
-                {configuracion
-                  .filter((item) => item.grupo === "general")
-                  .map((c) => (
-                    <div key={c.clave} className="grupo-campo">
-                      <label htmlFor={`config-${c.clave}`}>{c.descripcion || c.clave}</label>
-                      <input
-                        id={`config-${c.clave}`}
-                        type="text"
-                        name={c.clave}
-                        defaultValue={c.valor || ""}
-                      />
-                    </div>
-                  ))}
-              </div>
-
-              {/* Tarjeta REDES SOCIALES */}
-              <div className="admin-tarjeta-config">
-                <h3>Redes Sociales</h3>
-                {configuracion
-                  .filter((item) => item.grupo === "redes")
-                  .map((c) => (
-                    <div key={c.clave} className="grupo-campo">
-                      <label htmlFor={`config-${c.clave}`}>{c.descripcion || c.clave}</label>
-                      <input
-                        id={`config-${c.clave}`}
-                        type="text"
-                        name={c.clave}
-                        defaultValue={c.valor || ""}
-                      />
-                    </div>
-                  ))}
-              </div>
-
-              <div style={{ gridColumn: "1/-1", display: "flex", justifyContent: "flex-end", marginTop: "1rem" }}>
-                <button type="submit" className="btn btn--rojo">
-                  Guardar Cambios
-                </button>
-              </div>
+                  </section>
+                );
+              })}
             </form>
-          </div>
+          </section>
         )}
 
+        {/* ---------- VIEW: MI CUENTA ---------- */}
         {tabActivo === "cuenta" && (
-          <div className="admin-tab-cuerpo" style={{ maxWidth: "500px" }}>
-            <div className="admin-seccion-head">
+          <section className="vista" id="vista-cuenta">
+            <div className="vista__head">
               <div>
-                <h2>Seguridad de la Cuenta</h2>
-                <p style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>Cambia tu clave de acceso al panel de administración.</p>
+                <h2>Mi cuenta</h2>
+                <p>Cambia tu contraseña de acceso al panel.</p>
               </div>
             </div>
 
-            <form onSubmit={handlePasswordSubmit} className="admin-tarjeta-config">
-              <div className="grupo-campo">
-                <label>Contraseña actual</label>
+            <form className="tarjeta tarjeta--formulario" id="form-password" onSubmit={handlePasswordSubmit}>
+              <label className="campo">
+                <span>Contraseña actual</span>
                 <input
                   type="password"
+                  name="actual"
+                  autoComplete="current-password"
                   required
                   value={pwdActual}
                   onChange={(e) => setPwdActual(e.target.value)}
                 />
-              </div>
-
-              <div className="grupo-campo">
-                <label>Contraseña nueva (mínimo 8 caracteres)</label>
+              </label>
+              <label className="campo">
+                <span>Contraseña nueva (mínimo 8 caracteres)</span>
                 <input
                   type="password"
-                  required
+                  name="nueva"
+                  autoComplete="new-password"
                   minLength={8}
+                  required
                   value={pwdNueva}
                   onChange={(e) => setPwdNueva(e.target.value)}
                 />
-              </div>
-
-              <div className="grupo-campo">
-                <label>Repetir contraseña nueva</label>
+              </label>
+              <label className="campo">
+                <span>Repite la contraseña nueva</span>
                 <input
                   type="password"
-                  required
+                  name="repetir"
+                  autoComplete="new-password"
                   minLength={8}
+                  required
                   value={pwdRepetir}
                   onChange={(e) => setPwdRepetir(e.target.value)}
                 />
-              </div>
-
-              <button type="submit" className="btn btn--rojo" style={{ marginTop: "1rem" }}>
-                Cambiar Contraseña
-              </button>
+              </label>
+              <button className="btn btn--rojo" type="submit">Cambiar contraseña</button>
             </form>
-          </div>
+          </section>
         )}
       </main>
 
-      {/* ============================================================
-         MODALES DE CRUD
-         ============================================================ */}
+      {/* ══════════ MODAL UNIFICADO ORIGINAL ══════════ */}
+      <div className="modal" id="modal" hidden={!modalType}>
+        <div className="modal__fondo" onClick={() => setModalType(null)}></div>
+        <div className="modal__caja" role="dialog" aria-modal="true" aria-labelledby="modal-titulo">
+          <header className="modal__head">
+            <h3 id="modal-titulo">
+              {modalType === "categoria" && (modalEditItem ? "Editar categoría" : "Nueva categoría")}
+              {modalType === "producto" && (modalEditItem ? "Editar producto" : "Nuevo producto")}
+              {modalType === "sucursal" && (modalEditItem ? "Editar sucursal" : "Nueva sucursal")}
+            </h3>
+            <button className="modal__cerrar" type="button" onClick={() => setModalType(null)} aria-label="Cerrar">✕</button>
+          </header>
 
-      {/* MODAL CATEGORIA */}
-      {modalType === "categoria" && (
-        <div className="modal-overlay is-active" onClick={() => setModalType(null)}>
-          <form className="modal" onClick={(e) => e.stopPropagation()} onSubmit={guardarCategoria}>
-            <div className="modal-header">
-              <h2>{modalEditItem ? "Editar Categoría" : "Nueva Categoría"}</h2>
-              <button type="button" onClick={() => setModalType(null)}>✕</button>
-            </div>
-            <div className="modal-cuerpo">
-              <div className="grupo-campo">
-                <label>Nombre de la categoría</label>
+          {/* Formulario Modal Categoria */}
+          {modalType === "categoria" && (
+            <form id="modal-form" className="modal__cuerpo" onSubmit={guardarCategoria} noValidate>
+              <label className="campo">
+                <span>Nombre de la categoría</span>
                 <input
                   type="text"
+                  name="nombre"
                   required
-                  placeholder="Ej. Pollos, Bebidas..."
+                  placeholder="Ej. Pollos y Paquetes"
                   value={catNombre}
                   onChange={(e) => setCatNombre(e.target.value)}
                 />
+              </label>
+              <div className="fila-campos">
+                <label className="campo">
+                  <span>Emoji</span>
+                  <input
+                    type="text"
+                    name="emoji"
+                    placeholder="🍗"
+                    value={catEmoji}
+                    onChange={(e) => setCatEmoji(e.target.value)}
+                  />
+                </label>
+                <label className="campo">
+                  <span>Orden</span>
+                  <input
+                    type="number"
+                    name="orden"
+                    min={0}
+                    value={catOrden}
+                    onChange={(e) => setCatOrden(Number(e.target.value))}
+                  />
+                </label>
               </div>
-
-              <div className="grupo-campo">
-                <label>Emoji (insignia visual)</label>
-                <input
-                  type="text"
-                  placeholder="Ej. 🍗, 🥤, 🥗"
-                  value={catEmoji}
-                  onChange={(e) => setCatEmoji(e.target.value)}
-                />
-              </div>
-
-              <div className="grupo-campo">
-                <label>Orden numérico (prioridad en menú)</label>
-                <input
-                  type="number"
-                  value={catOrden}
-                  onChange={(e) => setCatOrden(Number(e.target.value))}
-                />
-              </div>
-
-              <div className="grupo-campo" style={{ flexDirection: "row", gap: "0.5rem", alignItems: "center" }}>
+              <label className="campo campo--check">
                 <input
                   type="checkbox"
-                  id="cat-activo"
-                  style={{ width: "auto" }}
+                  name="activo"
                   checked={catActivo}
                   onChange={(e) => setCatActivo(e.target.checked)}
                 />
-                <label htmlFor="cat-activo">Categoría Activa (Visible al público)</label>
-              </div>
-            </div>
-            <div className="modal-pie">
-              <button type="button" className="btn btn--outline" onClick={() => setModalType(null)}>Cancelar</button>
-              <button type="submit" className="btn btn--rojo">Guardar</button>
-            </div>
-          </form>
-        </div>
-      )}
+                <span>Mostrar en el sitio</span>
+              </label>
+            </form>
+          )}
 
-      {/* MODAL PRODUCTO */}
-      {modalType === "producto" && (
-        <div className="modal-overlay is-active" onClick={() => setModalType(null)}>
-          <form className="modal" style={{ maxWidth: "600px" }} onClick={(e) => e.stopPropagation()} onSubmit={guardarProducto}>
-            <div className="modal-header">
-              <h2>{modalEditItem ? "Editar Producto" : "Nuevo Producto"}</h2>
-              <button type="button" onClick={() => setModalType(null)}>✕</button>
-            </div>
-            <div className="modal-cuerpo" style={{ maxHeight: "75vh" }}>
-              
-              <div className="grupo-campo">
-                <label>Categoría</label>
-                <select value={prodCategoriaId} onChange={(e) => setProdCategoriaId(Number(e.target.value))}>
-                  {menu.map((cat) => (
-                    <option key={cat.idNumerico} value={cat.idNumerico}>
-                      {cat.nombre}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grupo-campo">
-                <label>Nombre del producto</label>
+          {/* Formulario Modal Producto */}
+          {modalType === "producto" && (
+            <form id="modal-form" className="modal__cuerpo" onSubmit={guardarProducto} noValidate>
+              <label className="campo">
+                <span>Nombre del producto</span>
                 <input
                   type="text"
+                  name="nombre"
                   required
-                  placeholder="Ej. Medio Pollo"
+                  placeholder="Ej. Pollo Entero Asado"
                   value={prodNombre}
                   onChange={(e) => setProdNombre(e.target.value)}
                 />
-              </div>
-
-              <div className="grupo-campo">
-                <label>Descripción / Detalles</label>
+              </label>
+              <label className="campo">
+                <span>Descripción</span>
                 <textarea
-                  placeholder="Ej. Con papitas Galeana, tortillas y salsa..."
+                  name="descripcion"
+                  placeholder="Corta y antojable. Aparece debajo del nombre."
                   value={prodDesc}
                   onChange={(e) => setProdDesc(e.target.value)}
                 />
+              </label>
+              <div className="fila-campos">
+                <label className="campo">
+                  <span>Precio (MXN)</span>
+                  <input
+                    type="number"
+                    name="precio"
+                    step="0.01"
+                    min={0}
+                    required
+                    value={prodPrecio}
+                    onChange={(e) => setProdPrecio(Number(e.target.value))}
+                  />
+                </label>
+                <label className="campo">
+                  <span>Categoría</span>
+                  <select
+                    name="categoria_id"
+                    value={prodCategoriaId}
+                    onChange={(e) => setProdCategoriaId(Number(e.target.value))}
+                  >
+                    {menu.map((c) => (
+                      <option key={c.idNumerico} value={c.idNumerico}>
+                        {c.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <div className="fila-campos">
+                <label className="campo">
+                  <span>Etiqueta</span>
+                  <input
+                    type="text"
+                    name="etiqueta"
+                    placeholder="Ej. El más pedido"
+                    value={prodEtiqueta}
+                    onChange={(e) => setProdEtiqueta(e.target.value)}
+                  />
+                </label>
+                <label className="campo">
+                  <span>Orden</span>
+                  <input
+                    type="number"
+                    name="orden"
+                    min={0}
+                    value={prodOrden}
+                    onChange={(e) => setProdOrden(Number(e.target.value))}
+                  />
+                </label>
               </div>
 
-              <div className="grupo-campo">
-                <label>Precio base ($)</label>
-                <input
-                  type="number"
-                  required
-                  step="0.01"
-                  value={prodPrecio}
-                  onChange={(e) => setProdPrecio(Number(e.target.value))}
-                />
-              </div>
-
-              <div className="grupo-campo">
-                <label>Insignia / Etiqueta destacada (opcional)</label>
-                <input
-                  type="text"
-                  placeholder="Ej. El más vendido, Picoso, Nuevo..."
-                  value={prodEtiqueta}
-                  onChange={(e) => setProdEtiqueta(e.target.value)}
-                />
-              </div>
-
-              <div className="grupo-campo">
-                <label>Foto del producto</label>
-                <div className="admin-preview-upload">
-                  <img src={prodImagen || "/assets/img/logo.png"} alt="Preview" className="admin-preview-img" />
-                  <div className="admin-subir-btn-wrapper">
-                    <button type="button" className="btn btn--outline">Seleccionar imagen</button>
-                    <input type="file" accept="image/*" onChange={(e) => handleFileUpload(e, "menu", setProdImagen)} />
-                  </div>
-                  {prodImagen && (
-                    <button type="button" style={{ color: "var(--danger)" }} onClick={() => setProdImagen("")}>Quitar foto</button>
+              {/* Campo de Imagen original */}
+              <div className="campo">
+                <span>Foto del producto</span>
+                <div className="subida" data-subida data-carpeta="menu">
+                  {prodImagen ? (
+                    <img className="subida__vista" data-vista src={prodImagen} alt="" />
+                  ) : (
+                    <div className="subida__vista" data-vista>🍗</div>
                   )}
+                  <div className="subida__controles">
+                    <input type="hidden" name="imagen" value={prodImagen} />
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/avif"
+                      style={{ display: "none" }}
+                      id="file-upload-prod"
+                      onChange={(e) => handleFileUpload(e, "menu", setProdImagen)}
+                    />
+                    <button type="button" className="btn btn--negro btn--sm" onClick={() => document.getElementById("file-upload-prod")?.click()}>
+                      Subir foto
+                    </button>
+                    {prodImagen && (
+                      <button type="button" className="btn btn--fantasma btn--sm" onClick={() => setProdImagen("")}>
+                        Quitar
+                      </button>
+                    )}
+                    <small>JPG, PNG o WEBP · máximo 5 MB</small>
+                  </div>
                 </div>
               </div>
 
-              <div className="grupo-campo">
-                <label>Orden en el listado</label>
-                <input
-                  type="number"
-                  value={prodOrden}
-                  onChange={(e) => setProdOrden(Number(e.target.value))}
-                />
-              </div>
-
-              <div className="grupo-campo" style={{ flexDirection: "row", gap: "0.5rem", alignItems: "center" }}>
+              <label className="campo campo--check">
                 <input
                   type="checkbox"
-                  id="prod-activo"
-                  style={{ width: "auto" }}
+                  name="activo"
                   checked={prodActivo}
                   onChange={(e) => setProdActivo(e.target.checked)}
                 />
-                <label htmlFor="prod-activo">Producto Activo (Visible en menú)</label>
-              </div>
+                <span>Mostrar en el sitio</span>
+              </label>
 
-              {/* CONSTRUCTOR DE OPCIONES / VARIANTES */}
-              <div className="opciones-constructor">
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <h4 style={{ fontWeight: "700" }}>Grupos de Variantes (Opciones)</h4>
-                  <button type="button" className="btn btn--outline" style={{ padding: "0.3rem 0.8rem", fontSize: "0.75rem" }} onClick={agregarGrupoOpciones}>
-                    + Agregar Grupo
-                  </button>
-                </div>
-                
-                {prodOpciones.map((opc, gIdx) => (
-                  <div key={gIdx} className="opciones-constructor__grupo">
-                    <button type="button" className="opciones-constructor__eliminar-grupo" onClick={() => eliminarGrupoOpciones(gIdx)}>
-                      ✕
-                    </button>
-                    
-                    <div className="grupo-campo">
-                      <label>Nombre del Grupo (ej. Escoge tus Tortillas)</label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="Ej. Tipo de Tortillas"
-                        value={opc.etiqueta}
-                        onChange={(e) => {
-                          const nuevas = [...prodOpciones];
-                          nuevas[gIdx].etiqueta = e.target.value;
-                          setProdOpciones(nuevas);
-                        }}
-                      />
-                    </div>
-
-                    <div className="opciones-constructor__elecciones">
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
-                        <span style={{ fontSize: "0.8rem", fontWeight: "700" }}>Opciones de elección</span>
-                        <button type="button" className="btn btn--outline" style={{ padding: "0.2rem 0.6rem", fontSize: "0.7rem" }} onClick={() => agregarEleccion(gIdx)}>
-                          + Elección
-                        </button>
-                      </div>
-
-                      {opc.elecciones.map((el: any, eIdx: number) => (
-                        <div key={eIdx} className="opciones-constructor__eleccion-fila">
+              {/* Editor de grupos de opciones original */}
+              <div className="campo">
+                <span>Opciones del producto</span>
+                <small>Variantes que el cliente elige (ej. Tortillas: Maíz / Harina +$20).</small>
+                <div className="opciones-editor">
+                  {prodOpciones.map((opc, gIdx) => (
+                    <div key={gIdx} className="opcion-grupo" data-grupo>
+                      <div className="opcion-grupo__head">
+                        <label className="campo">
+                          <span>Nombre del grupo</span>
                           <input
                             type="text"
                             required
-                            placeholder="Ej. Maíz, Harina"
-                            value={el.etiqueta}
+                            placeholder="Ej. Tortillas"
+                            value={opc.etiqueta}
                             onChange={(e) => {
                               const nuevas = [...prodOpciones];
-                              nuevas[gIdx].elecciones[eIdx].etiqueta = e.target.value;
+                              nuevas[gIdx].etiqueta = e.target.value;
                               setProdOpciones(nuevas);
                             }}
                           />
-                          <input
-                            type="number"
-                            placeholder="Costo extra"
-                            value={el.extra}
-                            onChange={(e) => {
-                              const nuevas = [...prodOpciones];
-                              nuevas[gIdx].elecciones[eIdx].extra = Number(e.target.value);
-                              setProdOpciones(nuevas);
-                            }}
-                          />
-                          <button type="button" style={{ color: "var(--danger)" }} onClick={() => eliminarEleccion(gIdx, eIdx)}>
-                            ✕
-                          </button>
-                        </div>
-                      ))}
+                        </label>
+                        <button type="button" className="mini-btn" onClick={() => eliminarGrupoOpciones(gIdx)} title="Quitar grupo">✕</button>
+                      </div>
+
+                      <div>
+                        {opc.elecciones.map((el: any, eIdx: number) => (
+                          <div key={eIdx} className="eleccion-fila" data-eleccion>
+                            <input
+                              type="text"
+                              required
+                              placeholder="Ej. Maíz"
+                              value={el.etiqueta}
+                              onChange={(e) => {
+                                const nuevas = [...prodOpciones];
+                                nuevas[gIdx].elecciones[eIdx].etiqueta = e.target.value;
+                                setProdOpciones(nuevas);
+                              }}
+                            />
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              placeholder="Extra $"
+                              value={el.extra}
+                              onChange={(e) => {
+                                const nuevas = [...prodOpciones];
+                                nuevas[gIdx].elecciones[eIdx].extra = Number(e.target.value);
+                                setProdOpciones(nuevas);
+                              }}
+                            />
+                            <button type="button" className="mini-btn" onClick={() => eliminarEleccion(gIdx, eIdx)} title="Quitar">✕</button>
+                          </div>
+                        ))}
+                      </div>
+                      
+                      <button type="button" className="btn btn--fantasma btn--sm" onClick={() => agregarEleccion(gIdx)}>+ Opción</button>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  className="btn btn--fantasma btn--sm"
+                  onClick={agregarGrupoOpciones}
+                  style={{ alignSelf: "flex-start", marginTop: "0.5rem" }}
+                >
+                  + Agregar grupo de opciones
+                </button>
               </div>
+            </form>
+          )}
 
-            </div>
-            <div className="modal-pie">
-              <button type="button" className="btn btn--outline" onClick={() => setModalType(null)}>Cancelar</button>
-              <button type="submit" className="btn btn--rojo">Guardar</button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* MODAL SUCURSAL */}
-      {modalType === "sucursal" && (
-        <div className="modal-overlay is-active" onClick={() => setModalType(null)}>
-          <form className="modal" style={{ maxWidth: "550px" }} onClick={(e) => e.stopPropagation()} onSubmit={guardarSucursal}>
-            <div className="modal-header">
-              <h2>{modalEditItem ? "Editar Sucursal" : "Nueva Sucursal"}</h2>
-              <button type="button" onClick={() => setModalType(null)}>✕</button>
-            </div>
-            <div className="modal-cuerpo" style={{ maxHeight: "75vh" }}>
-              <div className="grupo-campo">
-                <label>Nombre de la Sucursal</label>
+          {/* Formulario Modal Sucursal */}
+          {modalType === "sucursal" && (
+            <form id="modal-form" className="modal__cuerpo" onSubmit={guardarSucursal} noValidate>
+              <label className="campo">
+                <span>Nombre de la sucursal</span>
                 <input
                   type="text"
+                  name="nombre"
                   required
-                  placeholder="Ej. Sucursal Linda Vista"
+                  placeholder="Ej. Eloy Cavazos"
                   value={sucNombre}
                   onChange={(e) => setSucNombre(e.target.value)}
                 />
-              </div>
-
-              <div className="grupo-campo">
-                <label>Dirección física</label>
+              </label>
+              <label className="campo">
+                <span>Calle y número</span>
                 <input
                   type="text"
+                  name="direccion"
                   required
-                  placeholder="Calle y número"
+                  placeholder="Av. Eloy Cavazos #6907"
                   value={sucDireccion}
                   onChange={(e) => setSucDireccion(e.target.value)}
                 />
+              </label>
+              <div className="fila-campos">
+                <label className="campo">
+                  <span>Colonia</span>
+                  <input
+                    type="text"
+                    name="colonia"
+                    placeholder="Santa María"
+                    value={sucColonia}
+                    onChange={(e) => setSucColonia(e.target.value)}
+                  />
+                </label>
+                <label className="campo">
+                  <span>Ciudad y estado</span>
+                  <input
+                    type="text"
+                    name="ciudad"
+                    placeholder="Guadalupe, N.L."
+                    value={sucCiudad}
+                    onChange={(e) => setSucCiudad(e.target.value)}
+                  />
+                </label>
               </div>
-
-              <div className="grupo-campo">
-                <label>Colonia</label>
+              <div className="fila-campos">
+                <label className="campo">
+                  <span>Teléfono</span>
+                  <input
+                    type="text"
+                    name="telefono"
+                    placeholder="81 1469 6373"
+                    value={sucTelefono}
+                    onChange={(e) => setSucTelefono(e.target.value)}
+                  />
+                </label>
+                <label className="campo">
+                  <span>WhatsApp (opcional)</span>
+                  <input
+                    type="text"
+                    name="whatsapp"
+                    placeholder="81 2230 9008"
+                    value={sucWhatsapp}
+                    onChange={(e) => setSucWhatsapp(e.target.value)}
+                  />
+                </label>
+              </div>
+              <label className="campo">
+                <span>Horario</span>
                 <input
                   type="text"
-                  placeholder="Colonia"
-                  value={sucColonia}
-                  onChange={(e) => setSucColonia(e.target.value)}
-                />
-              </div>
-
-              <div className="grupo-campo">
-                <label>Ciudad</label>
-                <input
-                  type="text"
-                  placeholder="Ciudad"
-                  value={sucCiudad}
-                  onChange={(e) => setSucCiudad(e.target.value)}
-                />
-              </div>
-
-              <div className="grupo-campo">
-                <label>Teléfono de contacto</label>
-                <input
-                  type="tel"
-                  placeholder="Ej. 81 2230 9008"
-                  value={sucTelefono}
-                  onChange={(e) => setSucTelefono(e.target.value)}
-                />
-              </div>
-
-              <div className="grupo-campo">
-                <label>WhatsApp Sucursal</label>
-                <input
-                  type="tel"
-                  placeholder="Ej. 528122309008"
-                  value={sucWhatsapp}
-                  onChange={(e) => setSucWhatsapp(e.target.value)}
-                />
-              </div>
-
-              <div className="grupo-campo">
-                <label>Horario</label>
-                <input
-                  type="text"
-                  placeholder="Ej. Lun a Dom de 11:30 AM a 10:00 PM"
+                  name="horario"
+                  placeholder="Lun a Dom · 11:00 – 21:00 h"
                   value={sucHorario}
                   onChange={(e) => setSucHorario(e.target.value)}
                 />
-              </div>
-
-              <div className="grupo-campo">
-                <label>Enlace a Google Maps</label>
+              </label>
+              <label className="campo">
+                <span>Enlace de Google Maps</span>
                 <input
                   type="url"
-                  placeholder="Ej. https://maps.google.com/..."
+                  name="mapa_url"
+                  placeholder="https://share.google/…"
                   value={sucMapaUrl}
                   onChange={(e) => setSucMapaUrl(e.target.value)}
                 />
-              </div>
-
-              <div className="admin-formulario-grid" style={{ gap: "1rem" }}>
-                <div className="grupo-campo">
-                  <label>Latitud (opcional)</label>
+                <small>Pega la liga que te da el botón Compartir de Google Maps.</small>
+              </label>
+              <div className="fila-campos">
+                <label className="campo">
+                  <span>Latitud (opcional)</span>
                   <input
-                    type="text"
-                    placeholder="Ej. 25.6866"
+                    type="number"
+                    step="0.0000001"
+                    name="lat"
                     value={sucLat}
                     onChange={(e) => setSucLat(e.target.value)}
                   />
-                </div>
-                <div className="grupo-campo">
-                  <label>Longitud (opcional)</label>
+                </label>
+                <label className="campo">
+                  <span>Longitud (opcional)</span>
                   <input
-                    type="text"
-                    placeholder="Ej. -100.3161"
+                    type="number"
+                    step="0.0000001"
+                    name="lng"
                     value={sucLng}
                     onChange={(e) => setSucLng(e.target.value)}
                   />
-                </div>
+                </label>
               </div>
 
-              <div className="grupo-campo">
-                <label>Imagen de la sucursal</label>
-                <div className="admin-preview-upload">
-                  <img src={sucImagen || "/assets/img/logo.png"} alt="Preview" className="admin-preview-img" />
-                  <div className="admin-subir-btn-wrapper">
-                    <button type="button" className="btn btn--outline">Seleccionar imagen</button>
-                    <input type="file" accept="image/*" onChange={(e) => handleFileUpload(e, "sucursales", setSucImagen)} />
-                  </div>
-                  {sucImagen && (
-                    <button type="button" style={{ color: "var(--danger)" }} onClick={() => setSucImagen("")}>Quitar foto</button>
+              {/* Campo de Imagen original para sucursal */}
+              <div className="campo">
+                <span>Foto de la sucursal</span>
+                <div className="subida" data-subida data-carpeta="sucursales">
+                  {sucImagen ? (
+                    <img className="subida__vista" data-vista src={sucImagen} alt="" />
+                  ) : (
+                    <div className="subida__vista" data-vista>🏪</div>
                   )}
+                  <div className="subida__controles">
+                    <input type="hidden" name="imagen" value={sucImagen} />
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/avif"
+                      style={{ display: "none" }}
+                      id="file-upload-suc"
+                      onChange={(e) => handleFileUpload(e, "sucursales", setSucImagen)}
+                    />
+                    <button type="button" className="btn btn--negro btn--sm" onClick={() => document.getElementById("file-upload-suc")?.click()}>
+                      Subir foto
+                    </button>
+                    {sucImagen && (
+                      <button type="button" className="btn btn--fantasma btn--sm" onClick={() => setSucImagen("")}>
+                        Quitar
+                      </button>
+                    )}
+                    <small>JPG, PNG o WEBP · máximo 5 MB</small>
+                  </div>
                 </div>
               </div>
 
-              <div className="grupo-campo">
-                <label>Orden en el listado</label>
-                <input
-                  type="number"
-                  value={sucOrden}
-                  onChange={(e) => setSucOrden(Number(e.target.value))}
-                />
+              <div className="fila-campos">
+                <label className="campo">
+                  <span>Orden</span>
+                  <input
+                    type="number"
+                    name="orden"
+                    min={0}
+                    value={sucOrden}
+                    onChange={(e) => setSucOrden(Number(e.target.value))}
+                  />
+                </label>
+                <label className="campo campo--check" style={{ marginTop: "1rem" }}>
+                  <input
+                    type="checkbox"
+                    name="activo"
+                    checked={sucActivo}
+                    onChange={(e) => setSucActivo(e.target.checked)}
+                  />
+                  <span>Mostrar en el sitio</span>
+                </label>
               </div>
+            </form>
+          )}
 
-              <div className="grupo-campo" style={{ flexDirection: "row", gap: "0.5rem", alignItems: "center" }}>
-                <input
-                  type="checkbox"
-                  id="suc-activo"
-                  style={{ width: "auto" }}
-                  checked={sucActivo}
-                  onChange={(e) => setSucActivo(e.target.checked)}
-                />
-                <label htmlFor="suc-activo">Sucursal Activa (Visible en web)</label>
-              </div>
-
-            </div>
-            <div className="modal-pie">
-              <button type="button" className="btn btn--outline" onClick={() => setModalType(null)}>Cancelar</button>
-              <button type="submit" className="btn btn--rojo">Guardar</button>
-            </div>
-          </form>
+          <footer className="modal__pie">
+            <button className="btn btn--fantasma" type="button" onClick={() => setModalType(null)}>Cancelar</button>
+            <button className="btn btn--rojo" type="submit" form="modal-form" id="modal-guardar" disabled={isModalSaving}>
+              Guardar
+            </button>
+          </footer>
         </div>
-      )}
+      </div>
 
-      {/* TOAST ALERT */}
-      {toastMsg && (
-        <div
-          style={{
-            position: "fixed",
-            bottom: "2rem",
-            left: "50%",
-            transform: "translateX(-50%)",
-            backgroundColor: "#1a1512",
-            color: "white",
-            padding: "0.85rem 2rem",
-            borderRadius: "var(--r-pill)",
-            zIndex: 300,
-            fontSize: "0.9rem",
-            fontWeight: "700",
-            boxShadow: "0 6px 30px rgba(0,0,0,0.3)",
-            border: "1.5px solid var(--border)",
-            display: "flex",
-            alignItems: "center",
-            gap: "0.5rem",
-          }}
-        >
-          <span>🔥</span>
-          <span>{toastMsg}</span>
-        </div>
-      )}
+      {/* TOAST ALERT ORIGINAL */}
+      <div className={`aviso ${toastMsg ? "visible" : ""}`} id="aviso" role="status" aria-live="polite">
+        {toastMsg}
+      </div>
     </div>
   );
 }
