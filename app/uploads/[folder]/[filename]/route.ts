@@ -30,7 +30,7 @@ export async function GET(
       return new NextResponse("Nombre de archivo inválido", { status: 400 });
     }
 
-    const filepath = path.join(process.cwd(), "public", "uploads", folder, filename);
+    const filepath = path.join(process.cwd(), "uploads", folder, filename);
 
     if (!fs.existsSync(filepath)) {
       return new NextResponse("No encontrado", { status: 404 });

@@ -12,9 +12,7 @@ npm-debug.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# Imágenes subidas desde el panel (respáldalas aparte)
-public/uploads/**/*
-!public/uploads/**/.gitkeep
+uploads/
 
 # Sistema
 .DS_Store

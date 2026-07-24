@@ -39,7 +39,7 @@ export async function POST(request: Request) {
       const extension = EXTENSION_POR_TIPO[file.type];
       const filename = crypto.randomBytes(10).toString("hex") + "-" + Date.now() + extension;
 
-      const uploadDir = path.join(process.cwd(), "public", "uploads", folder);
+      const uploadDir = path.join(process.cwd(), "uploads", folder);
       await fs.promises.mkdir(uploadDir, { recursive: true });
 
       const buffer = Buffer.from(await file.arrayBuffer());
