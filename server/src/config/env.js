@@ -32,13 +32,22 @@ const entero = (valor, porDefecto) => {
   return Number.isFinite(n) ? n : porDefecto;
 };
 
+const obtenerPuerto = () => {
+  const indiceArg = process.argv.findIndex((arg) => arg === "-p" || arg === "--port");
+  if (indiceArg !== -1 && process.argv[indiceArg + 1]) {
+    const valor = entero(process.argv[indiceArg + 1]);
+    if (valor) return valor;
+  }
+  return entero(process.env.PORT, 3000);
+};
+
 module.exports = {
   raiz: RAIZ,
   rutaPublica: path.join(RAIZ, "public"),
   rutaAdmin: path.join(RAIZ, "admin"),
   rutaSubidas: path.join(RAIZ, "public", "uploads"),
 
-  puerto: entero(process.env.PORT, 3000),
+  puerto: obtenerPuerto(),
   entorno: process.env.NODE_ENV || "development",
   esProduccion: process.env.NODE_ENV === "production",
 
