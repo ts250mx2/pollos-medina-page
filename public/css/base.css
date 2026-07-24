@@ -1,0 +1,234 @@
+/* ============================================================
+   Pollo Medina — Tokens, reset y tipografía
+   ============================================================ */
+
+:root {
+  /* Marca */
+  --rojo: #e4022a;
+  --rojo-osc: #b80020;
+  --rojo-claro: #ff2d4d;
+  --amarillo: #ffc20e;
+  --amarillo-osc: #f0a500;
+  --amarillo-claro: #ffe066;
+  --negro: #1a1512;
+  --carbon: #2e2723;
+  --crema: #f5efe8;
+  --crema-osc: #e7ded3;
+  --blanco: #ffffff;
+  --gris: #6f6862;
+
+  /* Semánticos */
+  --bg: var(--crema);
+  --texto: var(--negro);
+  --texto-suave: var(--gris);
+  --linea: rgba(26, 21, 18, 0.12);
+
+  /* Tipografía */
+  --font-display: "Luckiest Guy", "Comic Sans MS", cursive;
+  --font-titulo: "Anton", "Arial Narrow", Impact, sans-serif;
+  --font-texto: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+  /* Escala fluida */
+  --t-xs: 0.78rem;
+  --t-sm: 0.9rem;
+  --t-base: 1rem;
+  --t-md: clamp(1.05rem, 0.98rem + 0.35vw, 1.25rem);
+  --t-lg: clamp(1.35rem, 1.15rem + 1vw, 1.9rem);
+  --t-xl: clamp(1.9rem, 1.4rem + 2.4vw, 3.1rem);
+  --t-2xl: clamp(2.6rem, 1.6rem + 4.6vw, 5.4rem);
+
+  /* Espaciado */
+  --sp-1: 0.25rem;
+  --sp-2: 0.5rem;
+  --sp-3: 0.75rem;
+  --sp-4: 1rem;
+  --sp-5: 1.5rem;
+  --sp-6: 2rem;
+  --sp-7: 3rem;
+  --sp-8: 4.5rem;
+
+  /* Formas */
+  --r-sm: 8px;
+  --r-md: 14px;
+  --r-lg: 22px;
+  --r-pill: 999px;
+  --sombra-sm: 0 2px 6px rgba(26, 21, 18, 0.1);
+  --sombra-md: 0 10px 24px rgba(26, 21, 18, 0.14);
+  --sombra-lg: 0 22px 50px rgba(26, 21, 18, 0.22);
+  --borde-duro: 3px solid var(--negro);
+
+  /* Layout */
+  --ancho: 1180px;
+  --header-h: 72px;
+  --z-header: 60;
+  --z-drawer: 90;
+  --z-toast: 120;
+}
+
+/* ---------- Reset ---------- */
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+* { margin: 0; }
+
+/* El atributo hidden debe ganarle a cualquier display de las clases
+   (filtro de categorías, formulario del carrito, campo de dirección…). */
+[hidden] { display: none !important; }
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+  scroll-padding-top: calc(var(--header-h) + 12px);
+}
+
+body {
+  background: var(--bg);
+  color: var(--texto);
+  font-family: var(--font-texto);
+  font-size: var(--t-base);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+body.is-locked { overflow: hidden; }
+
+img,
+svg,
+video { display: block; max-width: 100%; height: auto; }
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button { cursor: pointer; background: none; border: none; }
+
+a { color: inherit; text-decoration: none; }
+
+ul, ol { list-style: none; padding: 0; }
+
+:focus-visible {
+  outline: 3px solid var(--amarillo);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* ---------- Tipografía ---------- */
+h1, h2, h3, h4 {
+  font-family: var(--font-titulo);
+  font-weight: 400;
+  line-height: 0.95;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+}
+
+h1 { font-size: var(--t-2xl); }
+h2 { font-size: var(--t-xl); }
+h3 { font-size: var(--t-lg); }
+
+p { text-wrap: pretty; }
+
+.display {
+  font-family: var(--font-display);
+  letter-spacing: 0.02em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+/* ---------- Utilidades ---------- */
+.contenedor {
+  width: min(100% - 2.5rem, var(--ancho));
+  margin-inline: auto;
+}
+
+.seccion { padding-block: clamp(3rem, 6vw, var(--sp-8)); position: relative; }
+.seccion--crema { background: var(--crema); }
+.seccion--blanca { background: var(--blanco); }
+.seccion--negra { background: var(--negro); color: var(--crema); }
+.seccion--roja { background: var(--rojo); color: var(--blanco); }
+
+.solo-lectores {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.saltar-al-contenido {
+  position: absolute;
+  top: -100px; left: var(--sp-4);
+  z-index: 200;
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--negro);
+  color: var(--amarillo);
+  border-radius: var(--r-sm);
+  transition: top 0.2s;
+}
+.saltar-al-contenido:focus { top: var(--sp-3); }
+
+.texto-amarillo { color: var(--amarillo); }
+.texto-rojo { color: var(--rojo); }
+.centrado { text-align: center; }
+
+/* ---------- Texturas de marca ---------- */
+/* Papel arrugado: ruido SVG sutil sobre el color plano */
+.textura-papel { position: relative; isolation: isolate; }
+.textura-papel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.35;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='320'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='320' height='320' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  pointer-events: none;
+}
+
+/* Orilla de papel rasgado */
+.rasgado {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 34px;
+  background-repeat: repeat-x;
+  background-size: 1200px 34px;
+  pointer-events: none;
+  z-index: 3;
+}
+.rasgado--abajo { bottom: -1px; }
+.rasgado--arriba { top: -1px; transform: scaleY(-1); }
+
+.rasgado--crema {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 34' preserveAspectRatio='none'%3E%3Cpath d='M0,34 L0,17 L38,21 L92,9 L146,19 L198,7 L252,17 L312,5 L366,15 L424,4 L482,14 L536,6 L594,18 L648,8 L710,20 L768,10 L826,22 L884,11 L942,23 L1000,13 L1058,25 L1118,15 L1200,23 L1200,34 Z' fill='%23f5efe8'/%3E%3C/svg%3E");
+}
+.rasgado--blanco {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 34' preserveAspectRatio='none'%3E%3Cpath d='M0,34 L0,17 L38,21 L92,9 L146,19 L198,7 L252,17 L312,5 L366,15 L424,4 L482,14 L536,6 L594,18 L648,8 L710,20 L768,10 L826,22 L884,11 L942,23 L1000,13 L1058,25 L1118,15 L1200,23 L1200,34 Z' fill='%23ffffff'/%3E%3C/svg%3E");
+}
+.rasgado--negro {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 34' preserveAspectRatio='none'%3E%3Cpath d='M0,34 L0,17 L38,21 L92,9 L146,19 L198,7 L252,17 L312,5 L366,15 L424,4 L482,14 L536,6 L594,18 L648,8 L710,20 L768,10 L826,22 L884,11 L942,23 L1000,13 L1058,25 L1118,15 L1200,23 L1200,34 Z' fill='%231a1512'/%3E%3C/svg%3E");
+}
+
+/* ---------- Animación ---------- */
+.aparece {
+  opacity: 0;
+  transform: translateY(22px);
+  transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+.aparece.visible { opacity: 1; transform: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .aparece { opacity: 1; transform: none; }
+}

@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="es-MX">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Panel · Pollo Medina</title>
+  <link rel="icon" href="/assets/img/logo.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="admin.css">
+</head>
+
+<body>
+  <!-- ══════════ LOGIN ══════════ -->
+  <div class="login" id="pantalla-login">
+    <form class="login__caja" id="form-login" novalidate>
+      <div class="login__logo">
+        <img src="/assets/img/logo.png" alt="Pollo Medina" width="96" height="96">
+      </div>
+      <h1>Panel de administración</h1>
+      <p class="login__sub">Pollo Medina · Desde 1989</p>
+
+      <label class="campo">
+        <span>Usuario</span>
+        <input type="text" name="usuario" autocomplete="username" required autofocus>
+      </label>
+
+      <label class="campo">
+        <span>Contraseña</span>
+        <input type="password" name="password" autocomplete="current-password" required>
+      </label>
+
+      <p class="login__error" id="login-error" role="alert" hidden></p>
+      <button class="btn btn--rojo btn--bloque" type="submit">Entrar</button>
+    </form>
+  </div>
+
+  <!-- ══════════ PANEL ══════════ -->
+  <div class="panel" id="pantalla-panel" hidden>
+    <header class="topbar">
+      <div class="topbar__marca">
+        <strong>Pollo Medina</strong>
+        <span>Panel de administración</span>
+      </div>
+      <nav class="topbar__tabs" role="tablist">
+        <button class="tab" data-vista="menu" aria-selected="true">Menú</button>
+        <button class="tab" data-vista="portada" aria-selected="false">Portada</button>
+        <button class="tab" data-vista="sucursales" aria-selected="false">Sucursales</button>
+        <button class="tab" data-vista="configuracion" aria-selected="false">Configuración</button>
+        <button class="tab" data-vista="cuenta" aria-selected="false">Mi cuenta</button>
+      </nav>
+      <div class="topbar__acciones">
+        <a class="enlace-sitio" href="/" target="_blank" rel="noopener">Ver el sitio ↗</a>
+        <span class="topbar__usuario" id="usuario-actual"></span>
+        <button class="btn btn--fantasma btn--sm" id="btn-salir" type="button">Salir</button>
+      </div>
+    </header>
+
+    <main class="contenido">
+      <!-- ---------- MENÚ ---------- -->
+      <section class="vista" id="vista-menu">
+        <div class="vista__head">
+          <div>
+            <h2>Menú</h2>
+            <p>Organiza categorías, productos, precios y fotos.</p>
+          </div>
+          <div class="vista__acciones">
+            <button class="btn btn--negro" id="btn-nueva-categoria" type="button">+ Categoría</button>
+            <button class="btn btn--rojo" id="btn-nuevo-producto" type="button">+ Producto</button>
+          </div>
+        </div>
+        <div id="lista-menu" class="lista-menu"></div>
+      </section>
+
+      <!-- ---------- PORTADA ---------- -->
+      <section class="vista" id="vista-portada" hidden>
+        <div class="vista__head">
+          <div>
+            <h2>Portada</h2>
+            <p>Elige el producto de la foto principal y las promociones de la semana.</p>
+          </div>
+        </div>
+
+        <div class="portada">
+          <section class="tarjeta portada__bloque" id="portada-hero">
+            <h3 class="portada__titulo">Foto principal (hero)</h3>
+            <p class="portada__ayuda">El producto que aparece grande en la portada. Se usa su foto, su nombre y su precio.</p>
+
+            <label class="campo">
+              <span>Producto</span>
+              <select id="hero-producto"></select>
+            </label>
+            <div class="fila-campos">
+              <label class="campo">
+                <span>Cinta (arriba a la izquierda)</span>
+                <input type="text" id="hero-etiqueta" placeholder="Especialidad de la casa" maxlength="60">
+              </label>
+              <label class="campo">
+                <span>Texto del sello (opcional)</span>
+                <input type="text" id="hero-subtitulo" placeholder="Se usa el nombre del producto si lo dejas vacío" maxlength="120">
+              </label>
+            </div>
+            <div class="portada__acciones">
+              <button class="btn btn--rojo" id="guardar-hero" type="button">Guardar foto principal</button>
+            </div>
+          </section>
+
+          <section class="tarjeta portada__bloque" id="portada-promos">
+            <div class="portada__promos-head">
+              <div>
+                <h3 class="portada__titulo">Promociones de la semana</h3>
+                <p class="portada__ayuda">La primera es la grande (roja). Puedes elegir hasta 6 productos.</p>
+              </div>
+              <button class="btn btn--negro btn--sm" id="agregar-promo" type="button">+ Agregar promo</button>
+            </div>
+
+            <div id="promos-lista" class="promos-lista"></div>
+
+            <div class="portada__acciones">
+              <button class="btn btn--rojo" id="guardar-promos" type="button">Guardar promociones</button>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <!-- ---------- SUCURSALES ---------- -->
+      <section class="vista" id="vista-sucursales" hidden>
+        <div class="vista__head">
+          <div>
+            <h2>Sucursales</h2>
+            <p>Direcciones, teléfonos, horarios, mapa y foto de cada sucursal.</p>
+          </div>
+          <div class="vista__acciones">
+            <button class="btn btn--rojo" id="btn-nueva-sucursal" type="button">+ Sucursal</button>
+          </div>
+        </div>
+        <div id="lista-sucursales" class="tarjetas"></div>
+      </section>
+
+      <!-- ---------- CONFIGURACIÓN ---------- -->
+      <section class="vista" id="vista-configuracion" hidden>
+        <div class="vista__head">
+          <div>
+            <h2>Configuración</h2>
+            <p>Teléfonos, horarios, redes sociales y avisos que aparecen en la página.</p>
+          </div>
+          <div class="vista__acciones">
+            <button class="btn btn--rojo" id="btn-guardar-config" type="button">Guardar cambios</button>
+          </div>
+        </div>
+        <form id="form-configuracion" class="config"></form>
+      </section>
+
+      <!-- ---------- CUENTA ---------- -->
+      <section class="vista" id="vista-cuenta" hidden>
+        <div class="vista__head">
+          <div>
+            <h2>Mi cuenta</h2>
+            <p>Cambia tu contraseña de acceso al panel.</p>
+          </div>
+        </div>
+
+        <form class="tarjeta tarjeta--formulario" id="form-password">
+          <label class="campo">
+            <span>Contraseña actual</span>
+            <input type="password" name="actual" autocomplete="current-password" required>
+          </label>
+          <label class="campo">
+            <span>Contraseña nueva (mínimo 8 caracteres)</span>
+            <input type="password" name="nueva" autocomplete="new-password" minlength="8" required>
+          </label>
+          <label class="campo">
+            <span>Repite la contraseña nueva</span>
+            <input type="password" name="repetir" autocomplete="new-password" minlength="8" required>
+          </label>
+          <button class="btn btn--rojo" type="submit">Cambiar contraseña</button>
+        </form>
+      </section>
+    </main>
+  </div>
+
+  <!-- ══════════ MODAL ══════════ -->
+  <div class="modal" id="modal" hidden>
+    <div class="modal__fondo" data-cerrar-modal></div>
+    <div class="modal__caja" role="dialog" aria-modal="true" aria-labelledby="modal-titulo">
+      <header class="modal__head">
+        <h3 id="modal-titulo">Editar</h3>
+        <button class="modal__cerrar" type="button" data-cerrar-modal aria-label="Cerrar">✕</button>
+      </header>
+      <form id="modal-form" class="modal__cuerpo" novalidate></form>
+      <footer class="modal__pie">
+        <button class="btn btn--fantasma" type="button" data-cerrar-modal>Cancelar</button>
+        <button class="btn btn--rojo" type="submit" form="modal-form" id="modal-guardar">Guardar</button>
+      </footer>
+    </div>
+  </div>
+
+  <div class="aviso" id="aviso" role="status" aria-live="polite"></div>
+
+  <script src="js/api.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/menu.js"></script>
+  <script src="js/portada.js"></script>
+  <script src="js/sucursales.js"></script>
+  <script src="js/configuracion.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

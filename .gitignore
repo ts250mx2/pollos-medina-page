@@ -1,0 +1,13 @@
+node_modules/
+.env
+.env.local
+*.log
+npm-debug.log*
+
+# Imágenes subidas desde el panel (respáldalas aparte)
+public/uploads/**/*
+!public/uploads/**/.gitkeep
+
+# Sistema
+.DS_Store
+Thumbs.db

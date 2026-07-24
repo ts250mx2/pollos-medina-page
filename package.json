@@ -1,0 +1,29 @@
+{
+  "name": "pollos-medina-page",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sitio web de pedidos de Pollo Medina con panel de administración",
+  "main": "server/src/server.js",
+  "scripts": {
+    "start": "node server/src/server.js",
+    "dev": "node --watch server/src/server.js",
+    "db:migrar": "node server/src/db/migrar.js",
+    "db:sembrar": "node server/src/db/sembrar.js",
+    "db:reiniciar": "node server/src/db/migrar.js --forzar && node server/src/db/sembrar.js",
+    "usuario:crear": "node server/src/db/crear-usuario.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.2.0",
+    "mysql2": "^3.12.0"
+  }
+}
