@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "next dev -p 3033",
     "build": "next build",
-    "start": "next start -p 3033",
+    "start": "next start -p 3034",
     "lint": "eslint",
     "db:migrar": "node server/src/db/migrar.js",
     "db:sembrar": "node server/src/db/sembrar.js",
