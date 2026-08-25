@@ -16,18 +16,63 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export { REPORT_URL };
 export const PROFILE_DIR = process.env.WANSOFT_PROFILE_DIR || path.join(__dirname, ".chrome-profile");
 
-/** Abre un contexto persistente (guarda cookies/sesión entre corridas). */
+/**
+ * Abre un contexto persistente (guarda cookies/sesión entre corridas).
+ *
+ * Usa el Chrome REAL del sistema (channel "chrome"), no el Chromium de prueba de
+ * Playwright: el Turnstile detecta el Chromium automatizado y se queda en
+ * "reintentando…". Si no hay Chrome instalado, cae al Chromium de Playwright.
+ * Se puede forzar con WANSOFT_CHANNEL (chrome | msedge | chromium).
+ */
 export async function launchContext() {
   const headful = process.env.HEADFUL === "1";
-  const ctx = await chromium.launchPersistentContext(PROFILE_DIR, {
+  const opciones = {
     headless: !headful,
     viewport: { width: 1600, height: 1000 },
     locale: "es-MX",
     timezoneId: "America/Mexico_City",
     args: ["--disable-blink-features=AutomationControlled"],
+  };
+
+  const preferido = process.env.WANSOFT_CHANNEL || "chrome";
+  let ctx;
+  try {
+    ctx = await chromium.launchPersistentContext(PROFILE_DIR, {
+      ...opciones,
+      ...(preferido !== "chromium" ? { channel: preferido } : {}),
+    });
+  } catch (e) {
+    // Chrome/Edge no instalado: usar el Chromium que trae Playwright.
+    console.warn(`No se pudo abrir "${preferido}" (${e.message.split("\n")[0]}). Usando Chromium de Playwright.`);
+    ctx = await chromium.launchPersistentContext(PROFILE_DIR, opciones);
+  }
+
+  // Quitar la huella mas obvia de automatizacion que revisa Turnstile.
+  await ctx.addInitScript(() => {
+    Object.defineProperty(navigator, "webdriver", { get: () => undefined });
   });
   ctx.setDefaultTimeout(60000);
   return ctx;
+}
+
+/**
+ * Login MANUAL: abre la pagina de Wansoft y espera a que una persona entre
+ * (escriba usuario/clave y resuelva el Turnstile en la ventana). Detecta el
+ * exito cuando aparece el reporte. Pensado para sembrar la sesion una vez.
+ */
+export async function esperarLoginManual(ctx, minutos = 5) {
+  const page = ctx.pages()[0] || (await ctx.newPage());
+  await page.goto(REPORT_URL, { waitUntil: "domcontentloaded" }).catch(() => {});
+  if (await tieneReporte(page)) return page; // el perfil ya tenia sesion viva
+
+  console.log(
+    "\n>>> Inicia sesion TU MISMO en la ventana del navegador:\n" +
+      "    usuario, contraseña, resuelve el captcha y pulsa Ingresar.\n" +
+      `    Tienes ${minutos} min. En cuanto entres, se guarda la sesion sola.\n`
+  );
+  await page.waitForSelector("#Subsidiary option", { state: "attached", timeout: minutos * 60000 });
+  await dismissModal(page).catch(() => {});
+  return page;
 }
 
 const tieneReporte = async (page) =>

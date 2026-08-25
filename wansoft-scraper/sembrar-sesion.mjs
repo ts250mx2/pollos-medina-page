@@ -9,7 +9,7 @@
 //
 // Al terminar, la cookie queda en la tabla wansoft_credenciales (fila id=1).
 import "dotenv/config";
-import { launchContext, ensureLoggedIn } from "./auth.mjs";
+import { launchContext, esperarLoginManual } from "./auth.mjs";
 import { getConnection, guardarSesion } from "./db.mjs";
 
 /** Serializa las cookies del dominio de Wansoft a un encabezado "a=1; b=2". */
@@ -21,18 +21,15 @@ function serializarCookies(cookies) {
 }
 
 async function main() {
-  if (process.env.HEADFUL !== "1") {
-    console.log(
-      "Sugerencia: corre con HEADFUL=1 para ver el navegador y resolver el Turnstile.\n" +
-        "  HEADFUL=1 node sembrar-sesion.mjs"
-    );
-  }
+  // El sembrado SIEMPRE necesita el navegador visible (una persona resuelve el
+  // captcha), asi que lo forzamos aunque no pases HEADFUL=1.
+  process.env.HEADFUL = "1";
 
   const ctx = await launchContext();
   let conn = null;
   try {
-    console.log("Abriendo Wansoft… resuelve el captcha si aparece.");
-    await ensureLoggedIn(ctx); // deja la sesion iniciada en el contexto
+    console.log("Abriendo Wansoft…");
+    await esperarLoginManual(ctx); // esperas a entrar tu mismo en la ventana
     const cookies = await ctx.cookies();
     const cookieHeader = serializarCookies(cookies);
     if (!cookieHeader) throw new Error("No se encontraron cookies de wansoft.net tras el login.");

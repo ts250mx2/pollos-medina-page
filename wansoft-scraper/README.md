@@ -29,9 +29,18 @@ Así el servidor **nunca abre Chromium**: solo necesita Node, `mysql2` y `cheeri
 
 ## Flujo sin navegador (recomendado para el VPS)
 
+Hay dos formas de sembrar la cookie. **La confiable es pegar la cookie de tu
+navegador normal**, porque el Turnstile rechaza cualquier navegador automatizado
+(incluido el que abre `sembrar-sesion.mjs`).
+
 ```bash
-# --- 1. UNA VEZ, en tu PC (con pantalla) ---
-HEADFUL=1 node sembrar-sesion.mjs      # resuelves el Turnstile; guarda la cookie en la BD
+# --- 1a. RECOMENDADO: inicia sesion en TU Chrome normal y pega la cookie ---
+#   F12 -> Network -> recarga -> clic en ConsolidatedSalesMasterReport ->
+#   Headers -> Request Headers -> copia el valor de "Cookie:"
+node sembrar-cookie.mjs "PEGA_AQUI_LA_COOKIE"
+
+# --- 1b. Alternativa (si el Turnstile te deja en navegador automatizado) ---
+node sembrar-sesion.mjs                 # abre el navegador; entras tu mismo
 
 # --- 2. En el servidor Linux, sin navegador ---
 node scrape-http.mjs --yesterday       # cierre del día anterior
