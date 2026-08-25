@@ -147,7 +147,8 @@ CREATE TABLE IF NOT EXISTS destacados (
 CREATE TABLE IF NOT EXISTS wansoft_sucursales (
   id             INT UNSIGNED NOT NULL AUTO_INCREMENT,
   clave          VARCHAR(80)  NULL,          -- value del combo en Wansoft (si se conoce)
-  nombre         VARCHAR(160) NOT NULL,      -- texto visible del combo
+  nombre         VARCHAR(160) NOT NULL,      -- texto visible del combo (nombre en Wansoft)
+  alias          VARCHAR(160) NULL,          -- nombre amigable que ve el negocio (opcional)
   orden          INT          NOT NULL DEFAULT 0,
   activo         TINYINT(1)   NOT NULL DEFAULT 1,
   creado_en      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,

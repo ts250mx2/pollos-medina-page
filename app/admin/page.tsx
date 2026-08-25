@@ -16,7 +16,7 @@ const formatDinero = (val: number) => {
 export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [usuario, setUsuario] = useState<any>(null);
-  const [tabActivo, setTabActivo] = useState("menu");
+  const [tabActivo, setTabActivo] = useState("dashboard");
 
   // Credenciales de login
   const [loginUsuario, setLoginUsuario] = useState("");

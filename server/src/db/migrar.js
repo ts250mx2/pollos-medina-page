@@ -20,6 +20,19 @@ const TABLAS_EN_ORDEN_INVERSO = [
   "usuarios",
 ];
 
+/** Agrega una columna solo si aún no existe (idempotente en bases ya creadas). */
+async function asegurarColumna(conexion, tabla, columna, definicion) {
+  const [filas] = await conexion.query(
+    `SELECT COUNT(*) AS n FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
+    [config.db.database, tabla, columna]
+  );
+  if (filas[0].n === 0) {
+    await conexion.query(`ALTER TABLE \`${tabla}\` ADD COLUMN \`${columna}\` ${definicion}`);
+    console.log(`  + columna ${tabla}.${columna}`);
+  }
+}
+
 async function migrar({ forzar }) {
   const conexion = await pool.getConnection();
   try {
@@ -50,6 +63,11 @@ async function migrar({ forzar }) {
       const nombre = /CREATE TABLE IF NOT EXISTS (\w+)/i.exec(sentencia);
       if (nombre) console.log(`  ✓ ${nombre[1]}`);
     }
+
+    // Columnas agregadas después de la creación inicial de una tabla.
+    // CREATE TABLE IF NOT EXISTS no toca tablas existentes, así que aquí
+    // añadimos, de forma idempotente, las columnas que falten en bases viejas.
+    await asegurarColumna(conexion, "wansoft_sucursales", "alias", "VARCHAR(160) NULL AFTER nombre");
 
     const [tablas] = await conexion.query("SHOW TABLES");
     console.log(`\n✅ Listo. La base tiene ${tablas.length} tablas.`);
