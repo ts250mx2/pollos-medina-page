@@ -13,61 +13,20 @@
 // Imprime una línea "SUMMARY {json}" que el panel lee para la bitácora.
 import "dotenv/config";
 import { launchContext, ensureLoggedIn } from "./auth.mjs";
-import { getBranches, getConsolidatedSales, consolidatedToRow, getTiposProducto, getProductos, getReportesDimensionales, todayMX, yesterdayMX } from "./report.mjs";
+import { getBranches, getConsolidatedSales, consolidatedToRow, getTiposProducto, getProductos, getReportesDimensionales } from "./report.mjs";
 import { getConnection, resolveBranch, upsertVenta, upsertProducto, upsertCategoria, upsertReporte, logInicio, logFin } from "./db.mjs";
+import { resolverDias, argVal as argValDe } from "./fechas.mjs";
 
 const args = process.argv.slice(2);
 const DRY = args.includes("--dry") || process.env.DRY === "1";
-
-function argVal(name) {
-  const i = args.indexOf(name);
-  return i !== -1 && args[i + 1] ? args[i + 1] : null;
-}
-
-const pad = (n) => String(n).padStart(2, "0");
-
-function diasDeMes(mes) {
-  const [a, m] = mes.split("-").map(Number);
-  const hoy = new Date();
-  const esActual = mes === `${hoy.getFullYear()}-${pad(hoy.getMonth() + 1)}`;
-  const ultimo = esActual ? hoy.getDate() : new Date(a, m, 0).getDate();
-  const dias = [];
-  for (let d = 1; d <= ultimo; d++) dias.push(`${a}-${pad(m)}-${pad(d)}`);
-  return dias;
-}
-
-function rangoDias(desde, hasta) {
-  const dias = [];
-  const d = new Date(desde + "T12:00:00");
-  const fin = new Date(hasta + "T12:00:00");
-  let g = 0;
-  while (d <= fin && g < 400) {
-    dias.push(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`);
-    d.setDate(d.getDate() + 1);
-    g++;
-  }
-  return dias;
-}
-
-/** Determina la lista de días a consultar según los argumentos. */
-function resolverDias() {
-  const from = argVal("--from");
-  const to = argVal("--to");
-  const mes = argVal("--month");
-  const date = argVal("--date") || process.env.DATE;
-  if (from && to) return rangoDias(from, to);
-  if (mes) return diasDeMes(mes);
-  if (args.includes("--yesterday")) return [yesterdayMX()];
-  if (date) return [date];
-  return [todayMX()];
-}
+const argVal = (name) => argValDe(args, name);
 
 function log(...a) {
   console.log(new Date().toISOString(), ...a);
 }
 
 export async function runOnce() {
-  const dias = resolverDias();
+  const dias = resolverDias(args);
   const branchFilter = argVal("--branch");
   log(`== Inicio. Días=${dias[0]}..${dias[dias.length - 1]} (${dias.length}) DRY=${DRY} ==`);
 

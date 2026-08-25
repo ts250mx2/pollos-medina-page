@@ -10,10 +10,10 @@
 import { chromium } from "playwright";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { BASE, REPORT_URL } from "./urls.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const BASE = (process.env.WANSOFT_URL || "https://www.wansoft.net/Wansoft.Web/").replace(/\/+$/, "/") ;
-export const REPORT_URL = BASE + "Reports/ConsolidatedSalesMasterReport";
+export { REPORT_URL };
 export const PROFILE_DIR = process.env.WANSOFT_PROFILE_DIR || path.join(__dirname, ".chrome-profile");
 
 /** Abre un contexto persistente (guarda cookies/sesión entre corridas). */

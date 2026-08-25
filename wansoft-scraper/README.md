@@ -11,23 +11,63 @@ limpios y es rápido.
 
 ## Cómo maneja el CAPTCHA (Turnstile)
 
-Wansoft protege el login con **Cloudflare Turnstile**. No se puede resolver de forma 100%
-automática. La estrategia:
+Wansoft protege el login con **Cloudflare Turnstile**. Ese captcha **solo lo puede resolver
+un navegador de verdad** con una persona delante — no hay forma de generar su token con
+`curl`/`fetch` sin cruzar a evasión anti-bot. Por eso el trabajo se parte en dos:
 
-1. **La primera vez** se corre con el navegador visible (`HEADFUL=1`): una persona resuelve
-   el captcha y entra. La sesión queda guardada en el **perfil de Chrome**
-   (`.chrome-profile/`, ignorado por git).
-2. **Las corridas siguientes** (botón del panel o cron) reutilizan ese perfil headless. Si la
-   sesión sigue viva, entran directo. Cuando caduca, se vuelve a correr una vez con `HEADFUL=1`.
+1. **Sembrar la sesión (una vez, en una máquina con pantalla — tu PC):** se abre el navegador,
+   una persona resuelve el Turnstile, y la **cookie de sesión** queda guardada en MySQL
+   (tabla `wansoft_credenciales`).
+2. **Bajar los reportes (cada día, en el servidor Linux — sin navegador):** un script con
+   `fetch` puro usa esa cookie. Cuando caduca (días o semanas después), se vuelve a sembrar.
+
+Así el servidor **nunca abre Chromium**: solo necesita Node, `mysql2` y `cheerio`.
+
+> El camino viejo con perfil de Chrome persistente (`scrape.mjs` + `.chrome-profile/`) sigue
+> existiendo por si prefieres correr todo desde una máquina con navegador. Los dos escriben a
+> las mismas tablas.
+
+## Flujo sin navegador (recomendado para el VPS)
+
+```bash
+# --- 1. UNA VEZ, en tu PC (con pantalla) ---
+HEADFUL=1 node sembrar-sesion.mjs      # resuelves el Turnstile; guarda la cookie en la BD
+
+# --- 2. En el servidor Linux, sin navegador ---
+node scrape-http.mjs --yesterday       # cierre del día anterior
+node scrape-http.mjs --month 2026-08   # backfill de un mes
+```
+
+Si la cookie caducó, `scrape-http.mjs` termina con `SUMMARY {... "sesionVencida": true}`,
+marca la fila como `vencida` en `wansoft_credenciales` y solo hay que repetir el paso 1.
+
+### Sembrar en tu PC, correr en el servidor Linux headless
+
+El paso 1 necesita pantalla; el VPS no la tiene. Tres opciones, de más simple a más pesada:
+
+- **A (recomendada):** siembras en tu PC. Como la cookie vive en la **misma base** que usa el
+  servidor, no hay que copiar nada: en cuanto la guardas, el VPS ya la lee. El VPS instala
+  **sin** navegador: `npm install --omit=optional`.
+- **B:** `xvfb` + VNC en el servidor y resuelves el captcha por escritorio remoto.
+- **C:** `ssh -X` con reenvío de X11 para ver la ventana del navegador en tu máquina.
 
 ## Instalación
+
+En tu PC (para sembrar la sesión, necesita navegador):
 
 ```bash
 cd wansoft-scraper
 npm install
 npx playwright install chromium
-# En servidor Linux, además:  npx playwright install-deps chromium
-cp .env.example .env        # ya viene con las credenciales; ajusta si cambian
+cp .env.example .env        # pon tus credenciales de Wansoft y de la BD
+```
+
+En el servidor Linux (solo baja reportes, sin navegador):
+
+```bash
+cd wansoft-scraper
+npm install --omit=optional   # NO instala Playwright/Chromium
+cp .env.example .env
 ```
 
 ## Uso
@@ -59,10 +99,10 @@ duplica. Imprime una línea `SUMMARY {json}` que el panel usa para la bitácora,
 ## Programar cada hora (cron, servidor Linux)
 
 ```cron
-# cada hora, el día en curso
-0 * * * * cd /ruta/pollos-medina-page/wansoft-scraper && /usr/bin/node scrape.mjs >> sync.log 2>&1
+# cada hora, el día en curso (sin navegador)
+0 * * * * cd /ruta/pollos-medina-page/wansoft-scraper && /usr/bin/node scrape-http.mjs >> sync.log 2>&1
 # 00:30, cierre del día anterior
-30 0 * * * cd /ruta/pollos-medina-page/wansoft-scraper && /usr/bin/node scrape.mjs --yesterday >> sync.log 2>&1
+30 0 * * * cd /ruta/pollos-medina-page/wansoft-scraper && /usr/bin/node scrape-http.mjs --yesterday >> sync.log 2>&1
 ```
 
 ## Qué trae y qué no
@@ -76,8 +116,13 @@ cuentas/comensales ni el desglose de formas de pago — esos viven en otros repo
 
 | Archivo | Rol |
 |---|---|
-| `auth.mjs` | Login con perfil persistente + manejo de Turnstile. |
-| `report.mjs` | Lista de sucursales + `GetConsolidatedSales` + mapeo a la fila. |
-| `db.mjs` | Resuelve/crea sucursal y hace UPSERT en `wansoft_ventas_diarias` + bitácora. |
-| `scrape.mjs` | Orquestador (día / rango / mes / ayer / dry). |
+| `urls.mjs` | URLs de Wansoft en un solo lugar (sin dependencias). |
+| `fechas.mjs` | Qué días consultar según los argumentos (compartido). |
+| `auth.mjs` | Login **con navegador** (Playwright) + Turnstile. Solo lo usan `scrape.mjs` y `sembrar-sesion.mjs`. |
+| `http-ctx.mjs` | Adaptador `fetch` sin navegador + detección de sesión vencida. |
+| `report.mjs` | Sucursales + `GetConsolidatedSales` + reportes a nivel producto/dimensional. Sirve a ambos caminos. |
+| `db.mjs` | UPSERT en las tablas del dashboard + bitácora + cookie de sesión. |
+| `sembrar-sesion.mjs` | **Una vez, con navegador:** guarda la cookie en `wansoft_credenciales`. |
+| `scrape-http.mjs` | **Cron del servidor, sin navegador:** baja los reportes con la cookie. |
+| `scrape.mjs` | Camino viejo con navegador (perfil de Chrome persistente). |
 | `.env` | Credenciales Wansoft + BD (no se sube a git). |

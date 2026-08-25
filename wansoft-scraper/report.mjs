@@ -3,9 +3,7 @@
 //   Reports/GetConsolidatedSales?subsidiaryId=&startDate=&endDate=
 // que respeta sucursal + rango y devuelve totales limpios.
 import * as cheerio from "cheerio";
-import { REPORT_URL } from "./auth.mjs";
-
-const BASE = (process.env.WANSOFT_URL || "https://www.wansoft.net/Wansoft.Web/").replace(/\/+$/, "/");
+import { BASE, REPORT_URL } from "./urls.mjs";
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const cleanStr = (v) => String(v ?? "").replace(/\s+/g, " ").trim();
@@ -34,6 +32,23 @@ export async function getBranches(page) {
       .map((o) => ({ id: o.value, name: (o.textContent || "").trim() }))
       .filter((o) => o.id && o.name)
   );
+}
+
+/**
+ * Igual que getBranches pero por HTTP puro (sin navegador): descarga la pagina
+ * del reporte y parsea el <select id="Subsidiary"> con cheerio.
+ */
+export async function getBranchesHTTP(ctx) {
+  const res = await ctx.request.get(REPORT_URL);
+  if (res.status() !== 200) throw new Error(`getBranchesHTTP HTTP ${res.status()}`);
+  const $ = cheerio.load(await res.text());
+  const out = [];
+  $("#Subsidiary option").each((i, o) => {
+    const id = $(o).attr("value");
+    const name = cleanStr($(o).text());
+    if (id && name) out.push({ id, name });
+  });
+  return out;
 }
 
 /** Llama al endpoint de resumen consolidado para una sucursal y un rango. */

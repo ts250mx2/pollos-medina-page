@@ -23,6 +23,31 @@ export async function getConnection() {
   });
 }
 
+// ---------- Sesion de Wansoft (cookie sembrada una vez con navegador) ----------
+
+/** Guarda la cookie de sesion en la fila unica (id=1) de wansoft_credenciales. */
+export async function guardarSesion(conn, usuario, cookie, estado = "activa") {
+  await conn.execute(
+    `INSERT INTO wansoft_credenciales (id, usuario, cookie, estado)
+       VALUES (1, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE usuario = VALUES(usuario), cookie = VALUES(cookie), estado = VALUES(estado)`,
+    [usuario || null, cookie || null, estado]
+  );
+}
+
+/** Lee la cookie sembrada. Devuelve { usuario, cookie, estado, actualizado_en } o null. */
+export async function leerSesion(conn) {
+  const [filas] = await conn.execute(
+    "SELECT usuario, cookie, estado, actualizado_en FROM wansoft_credenciales WHERE id = 1 LIMIT 1"
+  );
+  return filas.length ? filas[0] : null;
+}
+
+/** Marca la sesion como vencida para que el panel avise que hay que re-sembrar. */
+export async function marcarSesionVencida(conn) {
+  await conn.execute("UPDATE wansoft_credenciales SET estado = 'vencida' WHERE id = 1").catch(() => {});
+}
+
 /** Resuelve (o crea) la sucursal por su id de Wansoft; devuelve el id local. */
 export async function resolveBranch(conn, wansoftId, nombre) {
   // Primero por clave (id de Wansoft), luego por nombre.
