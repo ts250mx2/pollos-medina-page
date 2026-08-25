@@ -7,7 +7,7 @@ const dbName = requerido("DB_NAME");
 const dbUser = requerido("DB_USER");
 const dbPassword = requerido("DB_PASSWORD");
 
-const dbLimit = parseInt(process.env.DB_CONNECTION_LIMIT || "10", 10);
+const dbLimit = parseInt(process.env.DB_CONNECTION_LIMIT || "5", 10);
 
 export const pool = mysql.createPool({
   host: dbHost,
@@ -18,6 +18,10 @@ export const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: dbLimit,
   queueLimit: 0,
+  // Cerrar conexiones ociosas para no acaparar cupos en el servidor MySQL
+  // (que las mantendría abiertas hasta wait_timeout, 8h por defecto).
+  maxIdle: 2,
+  idleTimeout: 30000,
   charset: "utf8mb4_general_ci",
   dateStrings: true,
   timezone: "Z",
