@@ -473,7 +473,7 @@ export async function dashboard(desde: string, hasta: string, sucursalId?: numbe
               COALESCE(SUM(cantidad),0) AS cantidad
        FROM wansoft_ventas_productos
        WHERE fecha BETWEEN ? AND ? ${condSuc}
-       GROUP BY producto ORDER BY total DESC LIMIT 50`,
+       GROUP BY producto ORDER BY total DESC LIMIT 500`,
       paramsBase
     )
   ).map((f) => ({

@@ -188,6 +188,7 @@ export default function WansoftDashboard({ onToast }: Props) {
 //  RESUMEN
 // ------------------------------------------------------------
 function ResumenView({ data, t, rango, onDetalle }: { data: any; t: any; rango: Rango; onDetalle: (d: { kind: "producto" | "tipo" | "grupo"; valor: string }) => void }) {
+  const [verProductos, setVerProductos] = useState(false);
   const serie = data?.serie || [];
   const porSuc = data?.porSucursal || [];
   const tipos = data?.tipos || [];
@@ -270,6 +271,7 @@ function ResumenView({ data, t, rango, onDetalle }: { data: any; t: any; rango: 
       <div className="ws-panel">
         <div className="ws-panel__head">
           <div><div className="ws-panel__titulo">Ranking de productos</div><div className="ws-panel__sub">Top del periodo · haz clic en un producto para ver el detalle</div></div>
+          {productos.length > 0 && <button className="ws-vermas" type="button" onClick={() => setVerProductos(true)}>Ver todos ({productos.length}) →</button>}
         </div>
         <RankingProductos productos={productos} onProducto={(p) => onDetalle({ kind: "producto", valor: p })} />
       </div>
@@ -291,31 +293,97 @@ function ResumenView({ data, t, rango, onDetalle }: { data: any; t: any; rango: 
         <ReporteBarras titulo="Ventas por terminal" items={data.terminales} tipo="dinero" />
         <ReporteBarras titulo="Modificadores más usados" items={data.modificadores} tipo="cantidad" />
       </div>
+
+      {verProductos && (
+        <ProductosModal
+          productos={productos}
+          onProducto={(p) => { setVerProductos(false); onDetalle({ kind: "producto", valor: p }); }}
+          onClose={() => setVerProductos(false)}
+        />
+      )}
     </>
   );
 }
 
-// Lista de barras para un reporte dimensional
+// Modal con TODOS los productos + buscador
+function ProductosModal({ productos, onProducto, onClose }: { productos: any[]; onProducto: (p: string) => void; onClose: () => void }) {
+  const [q, setQ] = useState("");
+  const items = useMemo(() => (productos || []).filter((p) => p.total > 0), [productos]);
+  const max = useMemo(() => Math.max(...items.map((p) => p.total), 1), [items]);
+  const filtro = q.trim().toLowerCase();
+  const lista = filtro
+    ? items.filter((p) => (p.producto || "").toLowerCase().includes(filtro) || (p.categoria || "").toLowerCase().includes(filtro))
+    : items;
+
+  return (
+    <div className="modal" role="dialog" aria-modal="true">
+      <div className="modal__fondo" onClick={onClose} />
+      <div className="modal__caja" style={{ width: "min(720px, 100%)" }}>
+        <header className="modal__head">
+          <h3>Ranking de productos · todos <span className="ws-panel__sub">({items.length})</span></h3>
+          <button className="modal__cerrar" type="button" onClick={onClose} aria-label="Cerrar">✕</button>
+        </header>
+        <div className="modal__cuerpo">
+          <label className="campo">
+            <span>Buscar producto</span>
+            <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Escribe el nombre o la categoría…" />
+          </label>
+          <div className="ws-rank">
+            {lista.map((p, i) => (
+              <button key={p.producto} className="ws-rank__fila" onClick={() => onProducto(p.producto)} type="button" title="Ver detalle">
+                <span className="ws-rank__num">{i + 1}</span>
+                <span className="ws-rank__body">
+                  <span className="ws-rank__top">
+                    <span className="ws-rank__nom">{p.producto}{p.categoria ? <span className="ws-rank__cat"> · {p.categoria}</span> : null}</span>
+                    <span className="ws-rank__val">{money(p.total)} · {numero(p.cantidad)} u</span>
+                  </span>
+                  <span className="ws-rank__track"><span className="ws-rank__fill" style={{ width: `${(p.total / max) * 100}%` }} /></span>
+                </span>
+                <span className="ws-rank__go">→</span>
+              </button>
+            ))}
+            {!lista.length && <p className="ws-vacio">Sin coincidencias para “{q}”.</p>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Lista de barras (o pastel) para un reporte dimensional
 function ReporteBarras({ titulo, items, tipo, campoValor, extra }: { titulo: string; items: any[]; tipo: "dinero" | "cantidad"; campoValor?: "total" | "subtotal"; extra?: "cuentas" }) {
+  const [vista, setVista] = useState<"barras" | "pastel">("barras");
   const lista = (items || []).filter((x) => (x.valor || 0) > 0);
   const valorDe = (x: any) => (campoValor ? x[campoValor] : x.valor) || 0;
   const max = Math.max(...lista.map(valorDe), 1);
   const fmt = (v: number) => (tipo === "cantidad" ? `${numero(v)} u` : money(v));
   return (
     <div className="ws-panel">
-      <div className="ws-panel__head"><div><div className="ws-panel__titulo">{titulo}</div></div></div>
-      <div className="ws-barras">
-        {lista.slice(0, 10).map((x, i) => (
-          <div className="ws-barra" key={x.etiqueta + i}>
-            <div className="ws-barra__top">
-              <span className="ws-barra__nom">{x.etiqueta}{x.etiqueta2 ? <span className="ws-rank__cat"> · {x.etiqueta2}</span> : null}</span>
-              <span className="ws-barra__val">{fmt(valorDe(x))}{x.participacion ? ` · ${x.participacion}%` : ""}{extra === "cuentas" && x.cantidad2 ? ` · ${numero(x.cantidad2)} cta` : ""}</span>
-            </div>
-            <div className="ws-barra__track"><div className="ws-barra__fill" style={{ width: `${(valorDe(x) / max) * 100}%` }} /></div>
+      <div className="ws-panel__head">
+        <div><div className="ws-panel__titulo">{titulo}</div></div>
+        {lista.length > 0 && (
+          <div className="ws-seg ws-seg--mini" role="tablist" aria-label={`Vista de ${titulo}`}>
+            <button className="ws-seg__btn" aria-selected={vista === "barras"} onClick={() => setVista("barras")} type="button">Barras</button>
+            <button className="ws-seg__btn" aria-selected={vista === "pastel"} onClick={() => setVista("pastel")} type="button">Pastel</button>
           </div>
-        ))}
-        {!lista.length && <p className="ws-vacio">Sin datos en el periodo.</p>}
+        )}
       </div>
+      {vista === "pastel" ? (
+        <Pastel items={lista.map((x) => ({ etiqueta: x.etiqueta, valor: valorDe(x) }))} tipo={tipo} />
+      ) : (
+        <div className="ws-barras">
+          {lista.slice(0, 10).map((x, i) => (
+            <div className="ws-barra" key={x.etiqueta + i}>
+              <div className="ws-barra__top">
+                <span className="ws-barra__nom">{x.etiqueta}{x.etiqueta2 ? <span className="ws-rank__cat"> · {x.etiqueta2}</span> : null}</span>
+                <span className="ws-barra__val">{fmt(valorDe(x))}{x.participacion ? ` · ${x.participacion}%` : ""}{extra === "cuentas" && x.cantidad2 ? ` · ${numero(x.cantidad2)} cta` : ""}</span>
+              </div>
+              <div className="ws-barra__track"><div className="ws-barra__fill" style={{ width: `${(valorDe(x) / max) * 100}%` }} /></div>
+            </div>
+          ))}
+          {!lista.length && <p className="ws-vacio">Sin datos en el periodo.</p>}
+        </div>
+      )}
     </div>
   );
 }
@@ -383,7 +451,7 @@ function sliceDice(nodos: { i: number; value: number }[], x: number, y: number, 
   }
 }
 
-function Treemap({ tipos, onTipo }: { tipos: any[]; onTipo: (nombre: string) => void }) {
+function Treemap({ tipos, onTipo }: { tipos: any[]; onTipo?: (nombre: string) => void }) {
   const items = (tipos || []).filter((x) => x.total > 0).sort((a, b) => b.total - a.total);
   if (!items.length) return <p className="ws-vacio" style={{ padding: "1.5rem 0" }}>Sin datos de tipos de producto.<br /><small>Se llena con el reporte por tipo de grupo.</small></p>;
   const colores = ["#e4022a", "#ffc20e", "#1f9d55", "#1a1512", "#b80020", "#e08b00", "#2e7d32", "#5a4a42"];
@@ -397,9 +465,9 @@ function Treemap({ tipos, onTipo }: { tipos: any[]; onTipo: (nombre: string) => 
         const part = total ? Math.round((it.total / total) * 100) : 0;
         const grande = r.w >= 18 && r.h >= 16;
         return (
-          <button key={it.nombre} className="ws-tm" onClick={() => onTipo(it.nombre)} type="button"
-            style={{ left: `${r.x}%`, top: `${r.y}%`, width: `${r.w}%`, height: `${r.h}%`, background: colores[r.i % colores.length] }}
-            title={`${it.nombre}: ${money(it.total)} (${part}%) — clic para detalle`}>
+          <button key={it.nombre} className="ws-tm" onClick={() => onTipo?.(it.nombre)} type="button"
+            style={{ left: `${r.x}%`, top: `${r.y}%`, width: `${r.w}%`, height: `${r.h}%`, background: colores[r.i % colores.length], cursor: onTipo ? "pointer" : "default" }}
+            title={onTipo ? `${it.nombre}: ${money(it.total)} (${part}%) — clic para detalle` : `${it.nombre}: ${money(it.total)} (${part}%)`}>
             <div className="ws-tm__in">
               <div className="ws-tm__nom">{it.nombre}</div>
               {grande && <div className="ws-tm__val">{moneyK(it.total)} · {part}%</div>}
@@ -444,6 +512,7 @@ const DETALLE_BASE: Record<string, string> = {
 function DetalleModal({ kind, valor, rango, sucFiltro, onClose }: { kind: "producto" | "tipo" | "grupo"; valor: string; rango: Rango; sucFiltro: string; onClose: () => void }) {
   const [det, setDet] = useState<any>(null);
   const [cargando, setCargando] = useState(true);
+  const [vistaProd, setVistaProd] = useState<"barras" | "rect">("barras");
 
   useEffect(() => {
     (async () => {
@@ -488,18 +557,28 @@ function DetalleModal({ kind, valor, rango, sucFiltro, onClose }: { kind: "produ
 
               {esTipo && det.productos?.length > 0 && (
                 <div className="ws-panel" style={{ marginTop: "1rem" }}>
-                  <div className="ws-panel__head"><div><div className="ws-panel__titulo">Productos incluidos</div></div></div>
-                  <div className="ws-barras">
-                    {det.productos.map((p: any) => {
-                      const mx = Math.max(...det.productos.map((x: any) => x.total), 1);
-                      return (
-                        <div className="ws-barra" key={p.producto}>
-                          <div className="ws-barra__top"><span className="ws-barra__nom">{p.producto}</span><span className="ws-barra__val">{money(p.total)} · {numero(p.cantidad)} u</span></div>
-                          <div className="ws-barra__track"><div className="ws-barra__fill" style={{ width: `${(p.total / mx) * 100}%` }} /></div>
-                        </div>
-                      );
-                    })}
+                  <div className="ws-panel__head">
+                    <div><div className="ws-panel__titulo">Productos incluidos</div></div>
+                    <div className="ws-seg ws-seg--mini" role="tablist" aria-label="Vista de productos">
+                      <button className="ws-seg__btn" aria-selected={vistaProd === "barras"} onClick={() => setVistaProd("barras")} type="button">Barras</button>
+                      <button className="ws-seg__btn" aria-selected={vistaProd === "rect"} onClick={() => setVistaProd("rect")} type="button">Rectángulos</button>
+                    </div>
                   </div>
+                  {vistaProd === "rect" ? (
+                    <Treemap tipos={det.productos.map((p: any) => ({ nombre: p.producto, total: p.total }))} />
+                  ) : (
+                    <div className="ws-barras">
+                      {det.productos.map((p: any) => {
+                        const mx = Math.max(...det.productos.map((x: any) => x.total), 1);
+                        return (
+                          <div className="ws-barra" key={p.producto}>
+                            <div className="ws-barra__top"><span className="ws-barra__nom">{p.producto}</span><span className="ws-barra__val">{money(p.total)} · {numero(p.cantidad)} u</span></div>
+                            <div className="ws-barra__track"><div className="ws-barra__fill" style={{ width: `${(p.total / mx) * 100}%` }} /></div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -628,6 +707,53 @@ function Dona({ formas }: { formas: { efectivo: number; tarjeta: number; otros: 
           <div className="ws-leyenda__item" key={it.k}>
             <span className="ws-punto" style={{ background: it.c }} />
             <span><strong>{it.k}</strong> — {money(it.v)} ({total ? Math.round((it.v / total) * 100) : 0}%)</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Paleta compartida para treemap y pastel
+const PALETA = ["#e4022a", "#ffc20e", "#1f9d55", "#1a1512", "#b80020", "#e08b00", "#2e7d32", "#5a4a42", "#8a7f77"];
+
+// Camino de un sector de pastel (arco desde el centro)
+function arcoPastel(cx: number, cy: number, r: number, a0: number, a1: number) {
+  const grande = a1 - a0 > Math.PI ? 1 : 0;
+  const x0 = cx + r * Math.cos(a0), y0 = cy + r * Math.sin(a0);
+  const x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1);
+  return `M${cx},${cy} L${x0.toFixed(2)},${y0.toFixed(2)} A${r},${r} 0 ${grande} 1 ${x1.toFixed(2)},${y1.toFixed(2)} Z`;
+}
+
+// Gráfica de pastel genérica; agrupa la cola en "Otros" para no saturar.
+function Pastel({ items, tipo }: { items: { etiqueta: string; valor: number }[]; tipo: "dinero" | "cantidad" }) {
+  const lista = (items || []).filter((x) => x.valor > 0).sort((a, b) => b.valor - a.valor);
+  if (!lista.length) return <p className="ws-vacio" style={{ padding: "1.5rem 0" }}>Sin datos en el periodo.</p>;
+  const TOPE = 8;
+  let datos = lista;
+  if (lista.length > TOPE) {
+    const otros = lista.slice(TOPE).reduce((s, x) => s + x.valor, 0);
+    datos = [...lista.slice(0, TOPE), { etiqueta: "Otros", valor: otros }];
+  }
+  const total = datos.reduce((s, x) => s + x.valor, 0) || 1;
+  const fmt = (v: number) => (tipo === "cantidad" ? `${numero(v)} u` : money(v));
+  let ang = -Math.PI / 2;
+  const sectores = datos.map((d, i) => {
+    const frac = d.valor / total;
+    const a0 = ang, a1 = ang + frac * 2 * Math.PI;
+    ang = a1;
+    return { d, i, path: arcoPastel(70, 70, 60, a0, a1), color: PALETA[i % PALETA.length], pct: Math.round(frac * 100) };
+  });
+  return (
+    <div className="ws-dona-wrap">
+      <svg width="140" height="140" viewBox="0 0 140 140" role="img" aria-label="Distribución">
+        {sectores.map((s) => <path key={s.i} d={s.path} fill={s.color} stroke="#fff" strokeWidth="1" />)}
+      </svg>
+      <div className="ws-leyenda">
+        {sectores.map((s) => (
+          <div className="ws-leyenda__item" key={s.d.etiqueta + s.i}>
+            <span className="ws-punto" style={{ background: s.color }} />
+            <span><strong>{s.d.etiqueta}</strong> — {fmt(s.d.valor)} ({s.pct}%)</span>
           </div>
         ))}
       </div>

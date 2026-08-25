@@ -587,6 +587,13 @@ h1, h2, h3 { font-family: var(--font-titulo); font-weight: 400; text-transform: 
 }
 .ws-seg__btn:hover { color: var(--negro); }
 .ws-seg__btn[aria-selected="true"] { background: var(--negro); color: var(--amarillo); }
+.ws-seg--mini { padding: 2px; align-self: center; }
+.ws-seg--mini .ws-seg__btn { padding: 0.25rem 0.7rem; font-size: 0.74rem; }
+.ws-vermas {
+  align-self: center; background: none; border: none; color: var(--rojo);
+  font-weight: 800; font-size: 0.82rem; cursor: pointer; white-space: nowrap; padding: 0;
+}
+.ws-vermas:hover { text-decoration: underline; }
 .ws-periodo__inputs { display: flex; gap: 0.8rem; flex-wrap: wrap; align-items: end; }
 .ws-periodo__inputs .campo { min-width: 150px; }
 .ws-periodo__etq {
