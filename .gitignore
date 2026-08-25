@@ -17,3 +17,8 @@ uploads/
 # Sistema
 .DS_Store
 Thumbs.db
+
+# Wansoft scraper (perfil de sesión y volcados de depuración)
+wansoft-scraper/.chrome-profile/
+wansoft-scraper/dumps/
+wansoft-scraper/screenshots/

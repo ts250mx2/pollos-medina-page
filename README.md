@@ -169,3 +169,84 @@ ve vacía, aunque los cambios del panel no aparecerán hasta que el servidor vue
 - [ ] Poner `og.jpg` en `public/assets/img/` (es la imagen que se ve al compartir el link)
 - [ ] Cambiar la contraseña del usuario `admin`
 - [ ] Registrar el dominio y actualizar `<link rel="canonical">` y las metaetiquetas `og:`
+
+---
+
+## Dashboard Wansoft (ventas por sucursal)
+
+Nueva pestaña **Dashboard** en el panel de administración. Concentra las **ventas
+consolidadas por sucursal, día por día**, tomadas del reporte
+`ConsolidatedSalesMasterReport` de Wansoft.
+
+### Qué incluye
+
+| Sub-pestaña | Qué hace |
+|---|---|
+| **Resumen** | Selector de periodo **Día / Semana / Mes / Rango de fechas** (comparativo contra el periodo anterior); KPIs; gráfica de venta por día; **treemap por grupo de producto** (clic → detalle del grupo con sus productos); **ranking de productos** (clic → detalle); **mapa de calor hora × día de la semana**; y secciones **por tipo de grupo, por tipo de orden, por forma de pago, por usuario/cajero, por terminal y por modificador**. Los importes **cuadran**: productos, grupos, tipos, usuarios, etc. suman la venta neta; las formas de pago suman la venta total. |
+| **Detalle diario** | Tabla día × sucursal con todos los importes y conteos. |
+
+Las **sucursales** se muestran con un **alias amigable** (p. ej. Wansoft las llama *Jordan* y *Pollería 73*; el panel las muestra como *Mitras* y *San Nicolás*). El alias se edita en **Cargar datos → Sucursales**. Los **productos y tipos** son los de Wansoft (no el menú del sitio).
+| **Cargar datos** | Importar pegando la tabla del reporte (o un CSV/Excel), captura manual de un día, y alta/baja de sucursales. |
+| **Conexión** | Guardar la sesión de Wansoft (cookie), probar la sesión y disparar la sincronización por rango de fechas. |
+
+### Cómo entran los datos
+
+1. **Scraper automatizado (principal).** La carpeta [`wansoft-scraper/`](wansoft-scraper/)
+   entra a Wansoft con un navegador headless (Playwright) y llama al endpoint del reporte
+   `GetConsolidatedSales` para bajar las ventas de cada sucursal, día por día. Lo dispara el
+   botón **Dashboard → Conexión → “Sincronizar ahora”** y un **cron** cada hora.
+   - Wansoft protege el login con **Cloudflare Turnstile** (CAPTCHA). La **primera vez** se
+     corre con el navegador visible (`HEADFUL=1`) para resolver el captcha una sola vez; la
+     sesión queda guardada en un perfil de Chrome y luego el cron entra solo hasta que caduque.
+   - Ver [`wansoft-scraper/README.md`](wansoft-scraper/README.md) para instalación y cron.
+2. **Importar / pegar.** En **Cargar datos** se pega la tabla del reporte o un CSV. Se
+   reconocen columnas como `Sucursal`, `Fecha`, `Venta neta`, `Descuentos`, `Impuestos`,
+   `Venta total`, `Cuentas`, `Comensales`, `Efectivo`, `Tarjeta`.
+3. **Captura manual.** Para corregir o cargar un día suelto.
+
+```bash
+cd wansoft-scraper && npm install && npx playwright install chromium
+HEADFUL=1 node scrape.mjs --month 2026-08   # 1ª vez: resuelve el captcha y carga el mes
+node scrape.mjs                             # después: día de hoy (cron/botón)
+```
+
+### Tablas nuevas
+
+```
+wansoft_sucursales        Catálogo de sucursales (nombre Wansoft + alias amigable)
+wansoft_ventas_diarias    Una fila por sucursal y día (UPSERT idempotente)
+wansoft_ventas_productos  Ventas por platillo/artículo (ranking + detalle)
+wansoft_ventas_categorias Ventas por tipo de grupo
+wansoft_reportes          Tabla genérica: grupo, tipo de orden, usuario, terminal,
+                          modificador, forma de pago y hora (una fila por dimensión/día)
+wansoft_sync_log          Bitácora de cada sincronización
+```
+
+Reportes de Wansoft que alimentan las tablas: `GetConsolidatedSales` (diarias),
+`SalesBySaucer` (productos), `SalesByGroupType` (tipos), `SalesByGroup`,
+`SalesByTypeOfOrder`, `SalesByUser`, `SalesByTerminal`, `SalesByModifiers`,
+`SalesByPaymentType` y `SalesByHours` (mapa de calor).
+
+### Comandos
+
+```powershell
+npm run db:migrar                 # crea las tablas nuevas (no borra nada)
+npm run db:wansoft-demo -- --anio 2026   # datos DE EJEMPLO de TODO el año (ventas + productos)
+npm run db:wansoft-demo                  # solo el mes en curso (origen='demo')
+npm run db:wansoft-demo -- --limpiar   # borra TODO lo marcado como demo
+```
+
+> Los datos sembrados con `db:wansoft-demo` quedan marcados con `origen = 'demo'` y se ven
+> con una etiqueta **DEMO** en la tabla; sirven para probar el dashboard mientras se conecta
+> la información real, y se borran con `--limpiar`.
+
+### API (requiere sesión del panel)
+
+| Método | Ruta | Qué hace |
+|---|---|---|
+| GET | `/api/admin/wansoft/dashboard?mes=YYYY-MM&sucursal=ID` | KPIs, serie, ranking, formas de pago |
+| GET/POST/DELETE | `/api/admin/wansoft/ventas` | Listar / guardar un día / borrar un día |
+| POST | `/api/admin/wansoft/importar` | Importación masiva (`filas` o `csv`) |
+| GET/POST | `/api/admin/wansoft/sucursales` · PUT/DELETE `/[id]` | Catálogo de sucursales |
+| GET/PUT | `/api/admin/wansoft/credenciales` | Estado / guardar la cookie de sesión |
+| GET/POST | `/api/admin/wansoft/sync` | Probar sesión / sincronizar un rango |

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import WansoftDashboard from "@/components/WansoftDashboard";
 import "./admin.css";
 
 const formatDinero = (val: number) => {
@@ -700,6 +701,7 @@ export default function AdminPage() {
           <span>Panel de administración</span>
         </div>
         <nav className="topbar__tabs" role="tablist">
+          <button className="tab" aria-selected={tabActivo === "dashboard"} onClick={() => setTabActivo("dashboard")}>Dashboard</button>
           <button className="tab" aria-selected={tabActivo === "menu"} onClick={() => setTabActivo("menu")}>Menú</button>
           <button className="tab" aria-selected={tabActivo === "portada"} onClick={() => setTabActivo("portada")}>Portada</button>
           <button className="tab" aria-selected={tabActivo === "sucursales"} onClick={() => setTabActivo("sucursales")}>Sucursales</button>
@@ -714,6 +716,9 @@ export default function AdminPage() {
       </header>
 
       <main className="contenido">
+        {/* ---------- VIEW: DASHBOARD WANSOFT ---------- */}
+        {tabActivo === "dashboard" && <WansoftDashboard onToast={triggerToast} />}
+
         {/* ---------- VIEW: MENU ---------- */}
         {tabActivo === "menu" && (
           <section className="vista" id="vista-menu">

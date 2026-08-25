@@ -11,7 +11,8 @@
     "db:migrar": "node server/src/db/migrar.js",
     "db:sembrar": "node server/src/db/sembrar.js",
     "db:reiniciar": "node server/src/db/migrar.js --forzar && node server/src/db/sembrar.js",
-    "usuario:crear": "node server/src/db/crear-usuario.js"
+    "usuario:crear": "node server/src/db/crear-usuario.js",
+    "db:wansoft-demo": "node server/src/db/sembrar-wansoft-demo.js"
   },
   "engines": {
     "node": ">=18"

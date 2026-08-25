@@ -478,3 +478,170 @@ h1, h2, h3 { font-family: var(--font-titulo); font-weight: 400; text-transform: 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 0.001ms !important; }
 }
+
+/* ============================================================
+   DASHBOARD WANSOFT
+   ============================================================ */
+.ws { display: flex; flex-direction: column; gap: 1.4rem; }
+
+/* Sub-navegación del módulo */
+.ws-subnav { display: flex; gap: 0.4rem; flex-wrap: wrap; border-bottom: 2px solid var(--gris-claro); padding-bottom: 0.7rem; }
+.ws-subnav button {
+  padding: 0.45rem 1rem; border-radius: 999px; font-weight: 700; font-size: 0.88rem;
+  color: var(--gris); border: 2px solid transparent; background: var(--blanco);
+}
+.ws-subnav button:hover { color: var(--negro); border-color: var(--gris-claro); }
+.ws-subnav button[aria-selected="true"] { background: var(--negro); color: var(--amarillo); }
+
+/* Barra de filtros */
+.ws-filtros { display: flex; gap: 0.8rem; flex-wrap: wrap; align-items: end; }
+.ws-filtros .campo { min-width: 160px; }
+.ws-spacer { flex: 1; }
+
+/* Tarjetas KPI */
+.ws-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 1rem; }
+.ws-kpi {
+  position: relative; background: var(--blanco); border: 2px solid var(--gris-claro);
+  border-radius: var(--r); padding: 1.1rem 1.2rem; overflow: hidden;
+}
+.ws-kpi::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background: var(--rojo); }
+.ws-kpi--amar::before { background: var(--amarillo); }
+.ws-kpi--verde::before { background: var(--verde); }
+.ws-kpi--negro::before { background: var(--negro); }
+.ws-kpi__label { font-size: 0.72rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--gris); }
+.ws-kpi__valor { font-family: var(--font-titulo); font-size: 1.9rem; line-height: 1.1; margin-top: 0.2rem; }
+.ws-kpi__pie { font-size: 0.78rem; color: var(--gris); margin-top: 0.35rem; }
+.ws-delta { display: inline-flex; align-items: center; gap: 0.25rem; font-weight: 800; font-size: 0.8rem; padding: 0.1rem 0.5rem; border-radius: 999px; }
+.ws-delta--up { background: #e3f6ea; color: var(--verde); }
+.ws-delta--down { background: #fdeaee; color: var(--rojo); }
+.ws-delta--flat { background: var(--gris-claro); color: var(--gris); }
+
+/* Paneles con gráficas */
+.ws-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 1.2rem; }
+@media (max-width: 900px) { .ws-grid { grid-template-columns: 1fr; } }
+.ws-panel { background: var(--blanco); border: 2px solid var(--gris-claro); border-radius: var(--r); padding: 1.2rem; }
+.ws-panel__head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
+.ws-panel__titulo { font-size: 1.05rem; }
+.ws-panel__sub { font-size: 0.78rem; color: var(--gris); }
+
+/* Gráfica de líneas/área (SVG) */
+.ws-chart { width: 100%; height: auto; display: block; overflow: visible; }
+.ws-chart .grid-line { stroke: var(--gris-claro); stroke-width: 1; }
+.ws-chart .area { fill: url(#wsArea); }
+.ws-chart .linea { fill: none; stroke: var(--rojo); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+.ws-chart .punto { fill: var(--rojo); }
+.ws-chart .eje-txt { fill: var(--gris); font-size: 10px; font-family: var(--font); }
+.ws-chart .barra { fill: var(--negro); }
+.ws-chart .barra:hover { fill: var(--rojo); }
+
+/* Barras por sucursal */
+.ws-barras { display: flex; flex-direction: column; gap: 0.7rem; }
+.ws-barra { display: grid; grid-template-columns: 1fr; gap: 0.25rem; }
+.ws-barra__top { display: flex; justify-content: space-between; font-size: 0.82rem; }
+.ws-barra__nom { font-weight: 700; }
+.ws-barra__val { color: var(--gris); font-variant-numeric: tabular-nums; }
+.ws-barra__track { height: 12px; background: var(--gris-claro); border-radius: 999px; overflow: hidden; }
+.ws-barra__fill { height: 100%; background: linear-gradient(90deg, var(--rojo), var(--amarillo)); border-radius: 999px; }
+
+/* Dona de formas de pago */
+.ws-dona-wrap { display: flex; align-items: center; gap: 1.2rem; flex-wrap: wrap; }
+.ws-leyenda { display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.85rem; }
+.ws-leyenda__item { display: flex; align-items: center; gap: 0.5rem; }
+.ws-punto { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+
+/* Tabla de ventas */
+.ws-tabla-wrap { overflow-x: auto; border: 2px solid var(--gris-claro); border-radius: var(--r); background: var(--blanco); }
+.ws-tabla { width: 100%; border-collapse: collapse; font-size: 0.85rem; min-width: 720px; }
+.ws-tabla th, .ws-tabla td { padding: 0.6rem 0.8rem; text-align: right; white-space: nowrap; }
+.ws-tabla th:first-child, .ws-tabla td:first-child,
+.ws-tabla th.izq, .ws-tabla td.izq { text-align: left; }
+.ws-tabla thead th { background: #faf7f3; border-bottom: 2px solid var(--gris-claro); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--gris); position: sticky; top: 0; }
+.ws-tabla tbody tr:nth-child(even) { background: #fdfbf9; }
+.ws-tabla tbody tr:hover { background: #fff6ee; }
+.ws-tabla td { border-bottom: 1px solid var(--gris-claro); font-variant-numeric: tabular-nums; }
+.ws-tabla tfoot td { font-weight: 800; border-top: 2px solid var(--negro); background: #faf7f3; }
+.ws-tabla .num-fuerte { font-weight: 800; }
+
+/* Estado / avisos del módulo */
+.ws-nota { border-radius: var(--r); padding: 1rem 1.2rem; font-size: 0.9rem; line-height: 1.5; }
+.ws-nota--info { background: #eef4fd; border: 1px solid #cfe0fb; color: #234; }
+.ws-nota--warn { background: #fff7e6; border: 1px solid #ffe0a3; color: #5b4300; }
+.ws-nota--ok { background: #e3f6ea; border: 1px solid #b5e6c6; color: #14532d; }
+.ws-nota code { background: rgba(0,0,0,0.06); padding: 0.05rem 0.35rem; border-radius: 5px; font-size: 0.85em; }
+
+.ws-textarea { width: 100%; min-height: 120px; font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 0.8rem; }
+.ws-pasos { margin: 0.6rem 0 0 1.1rem; display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.88rem; }
+.ws-vacio { text-align: center; padding: 2.5rem 1rem; color: var(--gris); }
+.ws-vacio__emoji { font-size: 2.4rem; }
+
+.ws-chips { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.ws-chip-btn { padding: 0.3rem 0.7rem; border-radius: 999px; border: 2px solid var(--gris-claro); background: var(--blanco); font-size: 0.8rem; font-weight: 700; }
+.ws-chip-btn:hover { border-color: var(--negro); }
+
+/* ---------- Selector de periodo (día/semana/mes/rango) ---------- */
+.ws-periodo { display: flex; flex-direction: column; gap: 0.8rem; }
+.ws-seg { display: inline-flex; gap: 2px; background: var(--gris-claro); padding: 3px; border-radius: 999px; width: fit-content; }
+.ws-seg__btn {
+  padding: 0.4rem 1.05rem; border-radius: 999px; font-weight: 800; font-size: 0.85rem;
+  color: var(--gris); background: transparent; border: none; transition: background 0.15s, color 0.15s;
+}
+.ws-seg__btn:hover { color: var(--negro); }
+.ws-seg__btn[aria-selected="true"] { background: var(--negro); color: var(--amarillo); }
+.ws-periodo__inputs { display: flex; gap: 0.8rem; flex-wrap: wrap; align-items: end; }
+.ws-periodo__inputs .campo { min-width: 150px; }
+.ws-periodo__etq {
+  align-self: center; font-weight: 800; font-size: 0.9rem; color: var(--negro);
+  background: var(--amarillo); padding: 0.35rem 0.9rem; border-radius: 999px; white-space: nowrap;
+}
+
+/* ---------- Treemap (rectángulos) por tipo de producto ---------- */
+.ws-treemap {
+  position: relative; width: 100%; aspect-ratio: 16 / 10; min-height: 230px;
+  border-radius: 10px; overflow: hidden; background: var(--gris-claro);
+}
+.ws-tm { position: absolute; border: 2px solid var(--crema); overflow: hidden; color: #fff; }
+.ws-tm::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.05), rgba(0,0,0,0.42)); }
+.ws-tm__in { position: absolute; inset: 0; z-index: 1; display: flex; flex-direction: column; justify-content: flex-end; padding: 0.5rem 0.6rem; gap: 0.1rem; }
+.ws-tm__nom { font-weight: 800; font-size: 0.82rem; line-height: 1.1; text-shadow: 0 1px 2px rgba(0,0,0,0.4); }
+.ws-tm__val { font-size: 0.74rem; opacity: 0.95; text-shadow: 0 1px 2px rgba(0,0,0,0.4); font-variant-numeric: tabular-nums; }
+
+/* ---------- Ranking de productos (con drill-down) ---------- */
+.ws-rank { display: flex; flex-direction: column; gap: 0.45rem; }
+.ws-rank__fila {
+  display: grid; grid-template-columns: 30px 1fr 18px; align-items: center; gap: 0.7rem;
+  width: 100%; text-align: left; background: #faf7f3; border: 2px solid var(--gris-claro);
+  border-radius: 10px; padding: 0.55rem 0.8rem; transition: border-color 0.15s, background 0.15s, transform 0.1s;
+}
+.ws-rank__fila:hover { border-color: var(--negro); background: #fff6ee; transform: translateX(2px); }
+.ws-rank__num { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--negro); color: var(--amarillo); font-family: var(--font-titulo); font-size: 0.9rem; }
+.ws-rank__body { display: flex; flex-direction: column; gap: 0.28rem; min-width: 0; }
+.ws-rank__top { display: flex; justify-content: space-between; gap: 0.8rem; font-size: 0.85rem; }
+.ws-rank__nom { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ws-rank__cat { color: var(--gris); font-weight: 500; }
+.ws-rank__val { color: var(--gris); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ws-rank__track { height: 8px; background: var(--gris-claro); border-radius: 999px; overflow: hidden; }
+.ws-rank__fill { display: block; height: 100%; background: linear-gradient(90deg, var(--rojo), var(--amarillo)); border-radius: 999px; }
+.ws-rank__go { color: var(--gris); font-weight: 800; }
+.ws-rank__fila:hover .ws-rank__go { color: var(--rojo); }
+
+@media (max-width: 620px) {
+  .ws-periodo__etq { align-self: flex-start; }
+}
+
+/* ---------- Grid de 3 columnas para reportes dimensionales ---------- */
+.ws-grid3 { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 1.2rem; }
+
+/* Treemap: cada tile ahora es un botón (clic → detalle del tipo) */
+.ws-tm { cursor: pointer; text-align: left; padding: 0; font: inherit; transition: filter 0.12s; }
+.ws-tm:hover { filter: brightness(1.08); }
+.ws-tm:focus-visible { outline: 3px solid var(--amarillo); outline-offset: -3px; }
+
+/* ---------- Mapa de calor (hora × día) ---------- */
+.ws-heat-wrap { overflow-x: auto; }
+.ws-heat { border-collapse: separate; border-spacing: 3px; width: 100%; min-width: 620px; }
+.ws-heat th { font-size: 0.7rem; font-weight: 800; color: var(--gris); text-transform: uppercase; padding: 0.2rem; text-align: center; }
+.ws-heat tbody th { text-align: right; padding-right: 0.5rem; width: 44px; }
+.ws-heat td { height: 26px; border-radius: 5px; background: var(--gris-claro); transition: transform 0.1s; }
+.ws-heat td:hover { transform: scale(1.12); outline: 2px solid var(--negro); position: relative; z-index: 1; }
+.ws-heat-leyenda { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.8rem; font-size: 0.75rem; color: var(--gris); }
+.ws-heat-grad { flex: 1; max-width: 220px; height: 10px; border-radius: 999px; background: linear-gradient(90deg, #fff0c8, #ffc20e, #e4022a); }

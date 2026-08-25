@@ -1,0 +1,19 @@
+{
+  "name": "wansoft-scraper-pollos",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Consulta automatizada de Wansoft (Ventas por sucursal) y guardado en BDPollosMedinaMenu para el dashboard del panel.",
+  "scripts": {
+    "scrape": "node scrape.mjs",
+    "hoy": "node scrape.mjs",
+    "ayer": "node scrape.mjs --yesterday",
+    "dry": "node scrape.mjs --dry"
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0",
+    "dotenv": "^16.4.7",
+    "mysql2": "^3.12.0",
+    "playwright": "^1.49.1"
+  }
+}
