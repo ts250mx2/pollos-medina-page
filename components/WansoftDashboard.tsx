@@ -197,6 +197,14 @@ function ResumenView({ data, t, rango, onDetalle }: { data: any; t: any; rango: 
   const hayDatos = serie.length > 0 || porSuc.some((s: any) => s.venta_neta > 0);
   const cambio = data?.comparativo?.cambio_neta_pct;
 
+  // Cantidad de transacciones = suma de cuentas en "Ventas por tipo de orden".
+  const tiposOrden = data?.tiposOrden || [];
+  const transacciones =
+    tiposOrden.reduce((s: number, x: any) => s + (x.cantidad2 || 0), 0) ||
+    tiposOrden.reduce((s: number, x: any) => s + (x.cantidad || 0), 0);
+  // Ticket promedio = venta total (con impuestos) ÷ transacciones.
+  const ticketProm = transacciones ? (t?.venta_total || 0) / transacciones : 0;
+
   if (!hayDatos) {
     return (
       <div className="ws-vacio">
@@ -215,8 +223,8 @@ function ResumenView({ data, t, rango, onDetalle }: { data: any; t: any; rango: 
           delta={cambio}
           deltaTexto={cambio != null ? "vs periodo anterior" : undefined} />
         <Kpi label="Venta total (con impuestos)" valor={money(t.venta_total)} color="negro" pie={`Bruta: ${money(t.venta_bruta)}`} />
-        <Kpi label="Cuentas / cheques" valor={numero(t.cuentas)} color="amar" pie={`${numero(t.comensales)} comensales`} />
-        <Kpi label="Ticket promedio" valor={money(t.ticket_promedio)} color="verde" pie={`Promedio diario: ${money(data.promedioDiario)}`} />
+        <Kpi label="Cantidad de transacciones" valor={numero(transacciones)} color="amar" pie={`${numero(t.comensales)} comensales`} />
+        <Kpi label="Ticket promedio" valor={money(ticketProm)} color="verde" pie={`Venta total ÷ transacciones · ${money(data.promedioDiario)}/día`} />
       </div>
 
       <div className="ws-grid">
@@ -230,12 +238,7 @@ function ResumenView({ data, t, rango, onDetalle }: { data: any; t: any; rango: 
           <LineaArea serie={serie} />
         </div>
 
-        <div className="ws-panel">
-          <div className="ws-panel__head">
-            <div><div className="ws-panel__titulo">Formas de pago</div><div className="ws-panel__sub">Mezcla del periodo</div></div>
-          </div>
-          <Dona formas={data.formasPago} />
-        </div>
+        <ReporteBarras titulo="Ventas por tipo de orden" items={data.tiposOrden} tipo="dinero" extra="cuentas" vistaInicial="pastel" />
       </div>
 
       <div className="ws-grid">
@@ -287,7 +290,6 @@ function ResumenView({ data, t, rango, onDetalle }: { data: any; t: any; rango: 
       {/* Reportes dimensionales de Wansoft */}
       <div className="ws-grid3">
         <ReporteBarras titulo="Ventas por tipo de grupo" items={tipos.map((x: any) => ({ etiqueta: x.nombre, valor: x.total, participacion: x.participacion }))} tipo="dinero" />
-        <ReporteBarras titulo="Ventas por tipo de orden" items={data.tiposOrden} tipo="dinero" extra="cuentas" />
         <ReporteBarras titulo="Ventas por forma de pago" items={data.formasPagoDet} tipo="dinero" campoValor="total" />
         <ReporteBarras titulo="Ventas por usuario / cajero" items={data.usuarios} tipo="dinero" />
         <ReporteBarras titulo="Ventas por terminal" items={data.terminales} tipo="dinero" />
@@ -335,7 +337,7 @@ function ProductosModal({ productos, onProducto, onClose }: { productos: any[]; 
                 <span className="ws-rank__body">
                   <span className="ws-rank__top">
                     <span className="ws-rank__nom">{p.producto}{p.categoria ? <span className="ws-rank__cat"> · {p.categoria}</span> : null}</span>
-                    <span className="ws-rank__val">{money(p.total)} · {numero(p.cantidad)} u</span>
+                    <span className="ws-rank__val">{money(p.total)} · {numero(p.cantidad)} u · {money(p.cantidad ? p.total / p.cantidad : 0)} tkt</span>
                   </span>
                   <span className="ws-rank__track"><span className="ws-rank__fill" style={{ width: `${(p.total / max) * 100}%` }} /></span>
                 </span>
@@ -351,8 +353,8 @@ function ProductosModal({ productos, onProducto, onClose }: { productos: any[]; 
 }
 
 // Lista de barras (o pastel) para un reporte dimensional
-function ReporteBarras({ titulo, items, tipo, campoValor, extra }: { titulo: string; items: any[]; tipo: "dinero" | "cantidad"; campoValor?: "total" | "subtotal"; extra?: "cuentas" }) {
-  const [vista, setVista] = useState<"barras" | "pastel">("barras");
+function ReporteBarras({ titulo, items, tipo, campoValor, extra, vistaInicial = "barras" }: { titulo: string; items: any[]; tipo: "dinero" | "cantidad"; campoValor?: "total" | "subtotal"; extra?: "cuentas"; vistaInicial?: "barras" | "pastel" }) {
+  const [vista, setVista] = useState<"barras" | "pastel">(vistaInicial);
   const lista = (items || []).filter((x) => (x.valor || 0) > 0);
   const valorDe = (x: any) => (campoValor ? x[campoValor] : x.valor) || 0;
   const max = Math.max(...lista.map(valorDe), 1);
@@ -492,7 +494,7 @@ function RankingProductos({ productos, onProducto }: { productos: any[]; onProdu
           <span className="ws-rank__body">
             <span className="ws-rank__top">
               <span className="ws-rank__nom">{p.producto}{p.categoria ? <span className="ws-rank__cat"> · {p.categoria}</span> : null}</span>
-              <span className="ws-rank__val">{money(p.total)} · {numero(p.cantidad)} u</span>
+              <span className="ws-rank__val">{money(p.total)} · {numero(p.cantidad)} u · {money(p.cantidad ? p.total / p.cantidad : 0)} tkt</span>
             </span>
             <span className="ws-rank__track"><span className="ws-rank__fill" style={{ width: `${(p.total / max) * 100}%` }} /></span>
           </span>
@@ -551,7 +553,7 @@ function DetalleModal({ kind, valor, rango, sucFiltro, onClose }: { kind: "produ
               </div>
 
               <div className="ws-panel" style={{ marginTop: "1rem" }}>
-                <div className="ws-panel__head"><div><div className="ws-panel__titulo">Venta por día</div></div></div>
+                <div className="ws-panel__head"><div><div className="ws-panel__titulo">{kind === "producto" ? "Ventas por día de este producto" : "Venta por día"}</div></div></div>
                 <LineaArea serie={(det.serie || []).map((d: any) => ({ fecha: d.fecha, venta_neta: d.total }))} />
               </div>
 
@@ -665,52 +667,6 @@ function LineaArea({ serie }: { serie: any[] }) {
       {puntos.map((p, i) => (i % paso === 0 || i === n - 1 ? <circle key={i} className="punto" cx={p[0]} cy={p[1]} r={2.5} /> : null))}
       {serie.map((d, i) => (i % paso === 0 || i === n - 1 ? <text key={i} className="eje-txt" x={x(i)} y={H - P + 14} textAnchor="middle">{diaCorto(d.fecha)}</text> : null))}
     </svg>
-  );
-}
-
-// Dona de formas de pago
-function Dona({ formas }: { formas: { efectivo: number; tarjeta: number; otros: number } }) {
-  const items = [
-    { k: "Efectivo", v: formas?.efectivo || 0, c: "#1f9d55" },
-    { k: "Tarjeta", v: formas?.tarjeta || 0, c: "#e4022a" },
-    { k: "Otros", v: formas?.otros || 0, c: "#ffc20e" },
-  ];
-  const total = items.reduce((s, i) => s + i.v, 0);
-  const R = 52, C = 2 * Math.PI * R;
-  let acumulado = 0;
-
-  if (total <= 0) {
-    return <p className="ws-vacio" style={{ padding: "1.5rem 0" }}>Sin desglose de formas de pago.<br /><small>Se llena cuando el reporte trae efectivo/tarjeta.</small></p>;
-  }
-
-  return (
-    <div className="ws-dona-wrap">
-      <svg width="140" height="140" viewBox="0 0 140 140" role="img" aria-label="Formas de pago">
-        <g transform="translate(70,70) rotate(-90)">
-          <circle r={R} fill="none" stroke="#e7e1da" strokeWidth="18" />
-          {items.map((it, i) => {
-            const frac = it.v / total;
-            const dash = frac * C;
-            const el = (
-              <circle key={i} r={R} fill="none" stroke={it.c} strokeWidth="18"
-                strokeDasharray={`${dash} ${C - dash}`} strokeDashoffset={-acumulado} />
-            );
-            acumulado += dash;
-            return el;
-          })}
-        </g>
-        <text x="70" y="66" textAnchor="middle" fontSize="12" fill="#6f6862">Total</text>
-        <text x="70" y="82" textAnchor="middle" fontSize="13" fontWeight="700" fill="#1a1512">{moneyK(total)}</text>
-      </svg>
-      <div className="ws-leyenda">
-        {items.map((it) => (
-          <div className="ws-leyenda__item" key={it.k}>
-            <span className="ws-punto" style={{ background: it.c }} />
-            <span><strong>{it.k}</strong> — {money(it.v)} ({total ? Math.round((it.v / total) * 100) : 0}%)</span>
-          </div>
-        ))}
-      </div>
-    </div>
   );
 }
 
