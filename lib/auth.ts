@@ -1,8 +1,9 @@
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
 import { serialize } from "cookie";
+import { requerido } from "./entorno";
 
-const JWT_SECRET = process.env.JWT_SECRET || "bbfe185594d1b2da397e0287ee45f1acd3721cd36a0af8431ebf3affc21e65c0a30ca12a31bee1e097d7871501765d1c";
+const JWT_SECRET = requerido("JWT_SECRET");
 const JWT_EXPIRA = process.env.JWT_EXPIRA || "8h";
 const COOKIE_NAME = "pm_sesion";
 

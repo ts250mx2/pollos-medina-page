@@ -1,10 +1,12 @@
 import mysql from "mysql2/promise";
+import { requerido } from "./entorno";
 
-const dbHost = process.env.DB_HOST || "74.208.192.90";
+const dbHost = requerido("DB_HOST");
 const dbPort = parseInt(process.env.DB_PORT || "3306", 10);
-const dbName = process.env.DB_NAME || "BDPollosMedinaMenu";
-const dbUser = process.env.DB_USER || "kyk";
-const dbPassword = process.env.DB_PASSWORD || "merkurio";
+const dbName = requerido("DB_NAME");
+const dbUser = requerido("DB_USER");
+const dbPassword = requerido("DB_PASSWORD");
+
 const dbLimit = parseInt(process.env.DB_CONNECTION_LIMIT || "10", 10);
 
 export const pool = mysql.createPool({
