@@ -3,10 +3,9 @@
 import React, { useState, useMemo } from "react";
 
 // ============================================================
-//  Grid editable con filtro por columna y ordenamiento.
-//  - columns define cada columna (texto o select).
-//  - rows son objetos con un _id estable (para editar tras ordenar/filtrar).
-//  - onEdit(_id, key, valor) y onRemove(_id) los maneja el padre.
+//  Grid de solo lectura: buscador único (todas las columnas) +
+//  ordenamiento por columna + acciones Editar/Borrar por fila.
+//  El alta y la edición se hacen en un modal (ver RegistroModal).
 // ============================================================
 
 export interface GridColumn {
@@ -15,6 +14,7 @@ export interface GridColumn {
   type: "text" | "select";
   options?: { value: string; label: string }[]; // requerido para type "select"
   placeholder?: string;
+  required?: boolean;
 }
 
 export interface GridRow {
@@ -25,100 +25,79 @@ export interface GridRow {
 interface Props {
   columns: GridColumn[];
   rows: GridRow[];
-  onEdit: (id: number, key: string, valor: string) => void;
-  onRemove: (id: number) => void;
+  onEditar: (id: number) => void;
+  onBorrar: (id: number) => void;
 }
 
-export default function DataGrid({ columns, rows, onEdit, onRemove }: Props) {
-  const [orden, setOrden] = useState<{ key: string; dir: 1 | -1 } | null>(null);
-  const [filtros, setFiltros] = useState<Record<string, string>>({});
+// Texto visible de una celda (para select usa la etiqueta de la opción).
+export function displayCelda(row: GridRow, col: GridColumn): string {
+  const v = row[col.key] ?? "";
+  if (col.type === "select" && col.options) {
+    return col.options.find((o) => o.value === String(v))?.label ?? String(v);
+  }
+  return String(v);
+}
 
-  // Texto visible de una celda (para select usa la etiqueta de la opción).
-  const display = (row: GridRow, col: GridColumn): string => {
-    const v = row[col.key] ?? "";
-    if (col.type === "select" && col.options) {
-      return col.options.find((o) => o.value === String(v))?.label ?? String(v);
-    }
-    return String(v);
-  };
+export default function DataGrid({ columns, rows, onEditar, onBorrar }: Props) {
+  const [orden, setOrden] = useState<{ key: string; dir: 1 | -1 } | null>(null);
+  const [filtro, setFiltro] = useState("");
 
   const vista = useMemo(() => {
-    let out = rows.filter((r) =>
-      columns.every((c) => {
-        const f = (filtros[c.key] || "").trim().toLowerCase();
-        return !f || display(r, c).toLowerCase().includes(f);
-      })
-    );
+    const f = filtro.trim().toLowerCase();
+    let out = f
+      ? rows.filter((r) => columns.some((c) => displayCelda(r, c).toLowerCase().includes(f)))
+      : rows;
     if (orden) {
       const col = columns.find((c) => c.key === orden.key);
       if (col) {
         out = [...out].sort((a, b) =>
-          display(a, col).localeCompare(display(b, col), "es", { numeric: true, sensitivity: "base" }) * orden.dir
+          displayCelda(a, col).localeCompare(displayCelda(b, col), "es", { numeric: true, sensitivity: "base" }) * orden.dir
         );
       }
     }
     return out;
-    // display es puro respecto a columns; se recalcula con rows/filtros/orden.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows, columns, filtros, orden]);
+  }, [rows, columns, filtro, orden]);
 
   const alternarOrden = (key: string) =>
     setOrden((prev) => (prev?.key === key ? (prev.dir === 1 ? { key, dir: -1 } : null) : { key, dir: 1 }));
-
   const flecha = (key: string) => (orden?.key === key ? (orden.dir === 1 ? " ▲" : " ▼") : "");
 
   return (
-    <div className="grid-wrap">
-      <table className="grid-tabla">
-        <thead>
-          <tr>
-            {columns.map((c) => (
-              <th key={c.key}>
-                <button type="button" className="grid-orden" onClick={() => alternarOrden(c.key)} title="Ordenar">
-                  {c.label}{flecha(c.key)}
-                </button>
-              </th>
-            ))}
-            <th className="grid-acc" aria-label="Acciones" />
-          </tr>
-          <tr className="grid-filtros">
-            {columns.map((c) => (
-              <th key={c.key}>
-                <input
-                  value={filtros[c.key] || ""}
-                  onChange={(e) => setFiltros((f) => ({ ...f, [c.key]: e.target.value }))}
-                  placeholder="Filtrar…"
-                  aria-label={`Filtrar ${c.label}`}
-                />
-              </th>
-            ))}
-            <th className="grid-acc" />
-          </tr>
-        </thead>
-        <tbody>
-          {vista.map((r) => (
-            <tr key={r._id}>
+    <>
+      <div className="grid-buscar">
+        <input value={filtro} onChange={(e) => setFiltro(e.target.value)} placeholder="🔎 Buscar en todas las columnas…" aria-label="Buscar" />
+        <span className="grid-buscar__conteo">{vista.length} de {rows.length}</span>
+      </div>
+      <div className="grid-wrap">
+        <table className="grid-tabla">
+          <thead>
+            <tr>
               {columns.map((c) => (
-                <td key={c.key}>
-                  {c.type === "select" ? (
-                    <select value={String(r[c.key] ?? "")} onChange={(e) => onEdit(r._id, c.key, e.target.value)}>
-                      {(c.options || []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                    </select>
-                  ) : (
-                    <input value={String(r[c.key] ?? "")} onChange={(e) => onEdit(r._id, c.key, e.target.value)} placeholder={c.placeholder} />
-                  )}
-                </td>
+                <th key={c.key}>
+                  <button type="button" className="grid-orden" onClick={() => alternarOrden(c.key)} title="Ordenar">
+                    {c.label}{flecha(c.key)}
+                  </button>
+                </th>
               ))}
-              <td className="grid-acc">
-                <button type="button" className="btn btn--peligro btn--sm" onClick={() => onRemove(r._id)} aria-label="Quitar">✕</button>
-              </td>
+              <th className="grid-acc" aria-label="Acciones" />
             </tr>
-          ))}
-          {!vista.length && (
-            <tr><td colSpan={columns.length + 1} className="ws-vacio">{rows.length ? "Ningún renglón coincide con el filtro." : "Sin registros."}</td></tr>
-          )}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {vista.map((r) => (
+              <tr key={r._id}>
+                {columns.map((c) => <td key={c.key}>{displayCelda(r, c) || <span className="grid-vacia">—</span>}</td>)}
+                <td className="grid-acc">
+                  <button type="button" className="btn btn--fantasma btn--sm" onClick={() => onEditar(r._id)}>Editar</button>
+                  <button type="button" className="btn btn--peligro btn--sm" onClick={() => onBorrar(r._id)} aria-label="Borrar">✕</button>
+                </td>
+              </tr>
+            ))}
+            {!vista.length && (
+              <tr><td colSpan={columns.length + 1} className="ws-vacio">{rows.length ? "Ningún renglón coincide con la búsqueda." : "Sin registros."}</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }

@@ -2,26 +2,24 @@
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { descargarExcel, imprimirPDF } from "@/lib/exportar-tabla";
-import DataGrid, { GridColumn, GridRow } from "@/components/DataGrid";
+import DataGrid, { GridColumn, GridRow, displayCelda } from "@/components/DataGrid";
+import RegistroModal from "@/components/RegistroModal";
 
-// Catálogo global de terminales de pago (grid con filtros y ordenamiento).
+// Catálogo global de terminales de pago (grid + modal de alta/edición).
 
 interface SucursalRef { id: number; nombre: string }
-
 const TIPOS = ["Spin", "Clip", "Mercado Pago"];
+const CAMPOS = ["sucursal_id", "tipo", "numero_serie", "cuenta"] as const;
 
-interface Props {
-  sucursales: SucursalRef[];
-  onToast: (msg: string) => void;
-}
+interface Props { sucursales: SucursalRef[]; onToast: (msg: string) => void }
 
 export default function TerminalesPanel({ sucursales, onToast }: Props) {
   const [rows, setRows] = useState<GridRow[]>([]);
   const [cargando, setCargando] = useState(true);
-  const [guardando, setGuardando] = useState(false);
+  const [modal, setModal] = useState<{ editId: number | null; valores: Record<string, string> } | null>(null);
   const nextId = useRef(1);
-
   const nuevoId = () => nextId.current++;
+
   const nombreSucursal = useCallback(
     (id: string) => sucursales.find((s) => String(s.id) === String(id))?.nombre || "Sin asignar",
     [sucursales]
@@ -29,7 +27,7 @@ export default function TerminalesPanel({ sucursales, onToast }: Props) {
 
   const columnas: GridColumn[] = useMemo(() => [
     { key: "sucursal_id", label: "Sucursal", type: "select", options: [{ value: "", label: "Sin asignar" }, ...sucursales.map((s) => ({ value: String(s.id), label: s.nombre }))] },
-    { key: "tipo", label: "Tipo", type: "select", options: [{ value: "", label: "— Elige —" }, ...TIPOS.map((t) => ({ value: t, label: t }))] },
+    { key: "tipo", label: "Tipo", type: "select", required: true, options: [{ value: "", label: "— Elige —" }, ...TIPOS.map((t) => ({ value: t, label: t }))] },
     { key: "numero_serie", label: "Número de serie", type: "text", placeholder: "Opcional" },
     { key: "cuenta", label: "Cuenta", type: "text", placeholder: "Opcional" },
   ], [sucursales]);
@@ -52,49 +50,66 @@ export default function TerminalesPanel({ sucursales, onToast }: Props) {
     })();
   }, [onToast]);
 
-  const editar = (id: number, key: string, valor: string) =>
-    setRows((prev) => prev.map((r) => (r._id === id ? { ...r, [key]: valor } : r)));
-  const quitar = (id: number) => setRows((prev) => prev.filter((r) => r._id !== id));
-  const agregar = () => setRows((prev) => [...prev, { _id: nuevoId(), sucursal_id: "", tipo: "", numero_serie: "", cuenta: "" }]);
-
-  const guardar = async () => {
-    if (rows.some((r) => !String(r.tipo).trim())) { onToast("Cada terminal necesita un tipo."); return; }
-    setGuardando(true);
+  // Persiste la lista completa (reemplazo) y actualiza el estado local.
+  const persistir = async (next: GridRow[]) => {
+    setRows(next);
+    const terminales = next.map((r) => ({ sucursal_id: r.sucursal_id, tipo: r.tipo, numero_serie: r.numero_serie, cuenta: r.cuenta }));
     try {
-      const terminales = rows.map((r) => ({ sucursal_id: r.sucursal_id, tipo: r.tipo, numero_serie: r.numero_serie, cuenta: r.cuenta }));
       const res = await fetch("/api/admin/terminales", {
         method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ terminales }),
       });
       const d = await res.json();
-      if (d.ok) onToast(`Terminales guardadas (${d.total}).`);
-      else onToast(d.error || "No se pudo guardar.");
-    } catch { onToast("Error de conexión."); }
-    finally { setGuardando(false); }
+      if (!d.ok) onToast(d.error || "No se pudo guardar.");
+    } catch { onToast("Error de conexión al guardar."); }
+  };
+
+  const abrirNuevo = () => setModal({ editId: null, valores: { sucursal_id: "", tipo: "", numero_serie: "", cuenta: "" } });
+  const abrirEditar = (id: number) => {
+    const r = rows.find((x) => x._id === id);
+    if (r) setModal({ editId: id, valores: Object.fromEntries(CAMPOS.map((k) => [k, String(r[k] ?? "")])) });
+  };
+  const guardarModal = (vals: Record<string, string>) => {
+    const next = modal?.editId != null
+      ? rows.map((r) => (r._id === modal.editId ? { ...r, ...vals } : r))
+      : [...rows, { _id: nuevoId(), ...vals }];
+    setModal(null);
+    persistir(next);
+    onToast(modal?.editId != null ? "Terminal actualizada." : "Terminal agregada.");
+  };
+  const borrar = (id: number) => {
+    if (!confirm("¿Borrar esta terminal?")) return;
+    persistir(rows.filter((r) => r._id !== id));
+    onToast("Terminal borrada.");
   };
 
   const HEADERS = ["Sucursal", "Tipo", "Número de serie", "Cuenta"];
-  const datos = (): string[][] => rows.map((r) => [nombreSucursal(r.sucursal_id), r.tipo, r.numero_serie, r.cuenta]);
+  const datos = (): string[][] => rows.map((r) => [nombreSucursal(r.sucursal_id), displayCelda(r, columnas[1]), r.numero_serie, r.cuenta]);
   const exportarExcel = () => descargarExcel("terminales", "Terminales de pago", HEADERS, datos());
   const exportarPDF = () => { if (!imprimirPDF("Terminales de pago", HEADERS, datos())) onToast("El navegador bloqueó la impresión."); };
 
   return (
     <section className="vista">
       <div className="vista__head">
-        <div><h2>Terminales</h2><p>Catálogo de terminales de pago. Filtra y ordena por cualquier columna.</p></div>
+        <div><h2>Terminales</h2><p>Catálogo de terminales de pago. Busca y ordena por cualquier columna.</p></div>
         <div className="vista__acciones">
           <button className="btn btn--fantasma" type="button" onClick={exportarExcel}>⬇ Excel</button>
           <button className="btn btn--fantasma" type="button" onClick={exportarPDF}>🖨 PDF</button>
-          <button className="btn btn--rojo" type="button" onClick={agregar}>+ Terminal</button>
+          <button className="btn btn--rojo" type="button" onClick={abrirNuevo}>+ Terminal</button>
         </div>
       </div>
 
       {cargando ? <p className="ws-vacio">Cargando…</p> : (
-        <>
-          <DataGrid columns={columnas} rows={rows} onEdit={editar} onRemove={quitar} />
-          <div className="portada__acciones" style={{ marginTop: "1rem" }}>
-            <button className="btn btn--negro" type="button" onClick={guardar} disabled={guardando}>{guardando ? "Guardando…" : "Guardar terminales"}</button>
-          </div>
-        </>
+        <DataGrid columns={columnas} rows={rows} onEditar={abrirEditar} onBorrar={borrar} />
+      )}
+
+      {modal && (
+        <RegistroModal
+          titulo={modal.editId != null ? "Editar terminal" : "Nueva terminal"}
+          columns={columnas}
+          valores={modal.valores}
+          onGuardar={guardarModal}
+          onCerrar={() => setModal(null)}
+        />
       )}
     </section>
   );

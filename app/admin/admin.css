@@ -595,27 +595,26 @@ h1, h2, h3 { font-family: var(--font-titulo); font-weight: 400; text-transform: 
 }
 .ws-vermas:hover { text-decoration: underline; }
 
-/* ---------- Grid editable con filtros y ordenamiento (catálogos) ---------- */
+/* ---------- Grid de catálogos: buscador global + orden + acciones ---------- */
+.grid-buscar { display: flex; align-items: center; gap: 0.7rem; margin-bottom: 0.7rem; }
+.grid-buscar input {
+  flex: 1; max-width: 420px; padding: 0.5rem 0.8rem; font-size: 0.9rem;
+  border: 1px solid var(--gris-claro); border-radius: 999px; background: var(--blanco);
+}
+.grid-buscar__conteo { font-size: 0.8rem; color: var(--gris); white-space: nowrap; }
 .grid-wrap { overflow-x: auto; border: 1px solid var(--gris-claro); border-radius: 10px; background: var(--blanco); }
 .grid-tabla { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-.grid-tabla th, .grid-tabla td { padding: 4px 6px; border-bottom: 1px solid var(--gris-claro); text-align: left; vertical-align: middle; }
+.grid-tabla th, .grid-tabla td { padding: 6px 10px; border-bottom: 1px solid var(--gris-claro); text-align: left; vertical-align: middle; }
 .grid-tabla thead th { position: sticky; top: 0; background: var(--gris-claro); z-index: 1; }
 .grid-orden {
-  background: none; border: none; padding: 6px 2px; font-weight: 800; font-size: 0.82rem;
+  background: none; border: none; padding: 4px 2px; font-weight: 800; font-size: 0.82rem;
   color: var(--negro); cursor: pointer; white-space: nowrap; width: 100%; text-align: left;
 }
 .grid-orden:hover { color: var(--rojo); }
-.grid-filtros th { background: var(--blanco); padding: 4px 6px 6px; }
-.grid-filtros input {
-  width: 100%; padding: 0.3rem 0.5rem; font-size: 0.78rem; border: 1px solid var(--gris-claro);
-  border-radius: 6px; background: #faf7f3;
-}
-.grid-tabla tbody td input, .grid-tabla tbody td select {
-  width: 100%; min-width: 90px; padding: 0.35rem 0.45rem; font-size: 0.82rem;
-  border: 1px solid var(--gris-claro); border-radius: 6px; background: var(--blanco);
-}
 .grid-tabla tbody tr:hover td { background: #faf7f3; }
-.grid-acc { width: 46px; text-align: center; }
+.grid-vacia { color: var(--gris); }
+.grid-acc { width: 130px; text-align: right; white-space: nowrap; }
+.grid-acc .btn { margin-left: 4px; }
 .grid-tabla td.ws-vacio { padding: 1.2rem; text-align: center; }
 .ws-periodo__inputs { display: flex; gap: 0.8rem; flex-wrap: wrap; align-items: end; }
 .ws-periodo__inputs .campo { min-width: 150px; }
