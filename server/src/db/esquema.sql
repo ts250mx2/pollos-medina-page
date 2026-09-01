@@ -115,6 +115,36 @@ CREATE TABLE IF NOT EXISTS sucursales (
   KEY ix_sucursales_orden (orden)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ---------- Terminales de pago por sucursal ----------
+CREATE TABLE IF NOT EXISTS sucursal_terminales (
+  id              INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  sucursal_id     INT UNSIGNED NOT NULL,
+  tipo            VARCHAR(40)  NOT NULL,        -- Spin, Clip, Mercado Pago, …
+  numero_serie    VARCHAR(120) NULL,
+  cuenta_deposito VARCHAR(120) NULL,
+  orden           INT          NOT NULL DEFAULT 0,
+  creado_en       TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY ix_term_sucursal (sucursal_id),
+  CONSTRAINT fk_term_sucursal FOREIGN KEY (sucursal_id)
+    REFERENCES sucursales (id) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------- Usuarios de Wansoft por sucursal (referencia; password visible) ----------
+CREATE TABLE IF NOT EXISTS sucursal_usuarios_wansoft (
+  id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  sucursal_id  INT UNSIGNED NOT NULL,
+  tipo         VARCHAR(60)  NULL,               -- tipo de usuario
+  usuario      VARCHAR(120) NOT NULL,
+  password     VARCHAR(255) NULL,               -- guardado en claro a propósito (consulta)
+  orden        INT          NOT NULL DEFAULT 0,
+  creado_en    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY ix_wu_sucursal (sucursal_id),
+  CONSTRAINT fk_wu_sucursal FOREIGN KEY (sucursal_id)
+    REFERENCES sucursales (id) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ---------- Destacados de la portada (foto principal + promos) ----------
 -- seccion = 'hero'  → producto que se muestra en la foto principal (uno solo)
 -- seccion = 'promo' → productos de "Promociones de la semana" (varios, en orden)

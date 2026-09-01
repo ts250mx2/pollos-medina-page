@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import WansoftDashboard from "@/components/WansoftDashboard";
+import SucursalExtrasModal from "@/components/SucursalExtrasModal";
+import { descargarExcel, imprimirPDF } from "@/lib/exportar-sucursales";
 import "./admin.css";
 
 const formatDinero = (val: number) => {
@@ -35,6 +37,8 @@ export default function AdminPage() {
   const [pwdRepetir, setPwdRepetir] = useState("");
 
   // Modales
+  const [extrasSuc, setExtrasSuc] = useState<{ id: number; nombre: string } | null>(null);
+  const [exportando, setExportando] = useState(false);
   const [modalType, setModalType] = useState<"categoria" | "producto" | "sucursal" | null>(null);
   const [modalEditItem, setModalEditItem] = useState<any>(null); // null para nuevo
   const [toastMsg, setToastMsg] = useState<string | null>(null);
@@ -84,6 +88,26 @@ export default function AdminPage() {
   const triggerToast = (msg: string) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(null), 2800);
+  };
+
+  // Exportar sucursales (con terminales y usuarios Wansoft) a Excel o PDF.
+  const exportarSucursales = async (formato: "excel" | "pdf") => {
+    if (exportando) return;
+    setExportando(true);
+    try {
+      const res = await fetch("/api/admin/sucursales/exportar");
+      const d = await res.json();
+      if (!d.ok) { triggerToast(d.error || "No se pudo exportar."); return; }
+      if (formato === "excel") {
+        descargarExcel(d.sucursales);
+      } else if (!imprimirPDF(d.sucursales)) {
+        triggerToast("El navegador bloqueó la ventana de impresión. Habilítala e intenta de nuevo.");
+      }
+    } catch {
+      triggerToast("Error de conexión al exportar.");
+    } finally {
+      setExportando(false);
+    }
   };
 
   const verificarSesion = async () => {
@@ -919,6 +943,8 @@ export default function AdminPage() {
                 <p>Direcciones, teléfonos, horarios, mapa y foto de cada sucursal.</p>
               </div>
               <div className="vista__acciones">
+                <button className="btn btn--fantasma" onClick={() => exportarSucursales("excel")} type="button" disabled={exportando}>⬇ Excel</button>
+                <button className="btn btn--fantasma" onClick={() => exportarSucursales("pdf")} type="button" disabled={exportando}>🖨 PDF</button>
                 <button className="btn btn--rojo" id="btn-nueva-sucursal" onClick={() => abrirModalSuc()} type="button">+ Sucursal</button>
               </div>
             </div>
@@ -953,6 +979,7 @@ export default function AdminPage() {
                     </div>
                     <div className="tarjeta__pie">
                       <button className="btn btn--fantasma btn--sm" onClick={() => abrirModalSuc(s)}>Editar</button>
+                      <button className="btn btn--fantasma btn--sm" onClick={() => setExtrasSuc({ id: s.id, nombre: s.nombre })}>Terminales y usuarios</button>
                       <button className="btn btn--peligro btn--sm" onClick={() => borrarSucursal(s.id)}>Borrar</button>
                     </div>
                   </article>
@@ -1488,6 +1515,10 @@ export default function AdminPage() {
           </footer>
         </div>
       </div>
+
+      {extrasSuc && (
+        <SucursalExtrasModal sucursal={extrasSuc} onClose={() => setExtrasSuc(null)} onToast={triggerToast} />
+      )}
 
       {/* TOAST ALERT ORIGINAL */}
       <div className={`aviso ${toastMsg ? "visible" : ""}`} id="aviso" role="status" aria-live="polite">

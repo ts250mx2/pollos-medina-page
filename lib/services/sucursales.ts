@@ -1,4 +1,4 @@
-import { consultar, unaFila } from "../db";
+import { consultar, unaFila, enTransaccion } from "../db";
 import {
   ErrorHttp,
   texto,
@@ -136,4 +136,110 @@ export async function eliminar(id: number): Promise<{ id: number }> {
   if (!fila) throw new ErrorHttp(404, "La sucursal no existe.");
   await consultar("DELETE FROM sucursales WHERE id = ?", [id]);
   return { id };
+}
+
+// ============================================================
+//  Terminales y usuarios Wansoft por sucursal
+// ============================================================
+
+export interface Terminal {
+  id: number;
+  tipo: string;
+  numero_serie: string | null;
+  cuenta_deposito: string | null;
+}
+
+export interface UsuarioWansoft {
+  id: number;
+  tipo: string | null;
+  usuario: string;
+  password: string | null;
+}
+
+async function existeSucursal(id: number): Promise<void> {
+  const fila = await unaFila("SELECT id FROM sucursales WHERE id = ?", [id]);
+  if (!fila) throw new ErrorHttp(404, "La sucursal no existe.");
+}
+
+/** Terminales + usuarios Wansoft de una sucursal. */
+export async function listarExtras(
+  sucursalId: number
+): Promise<{ terminales: Terminal[]; usuarios: UsuarioWansoft[] }> {
+  await existeSucursal(sucursalId);
+  const terminales = await consultar<Terminal>(
+    `SELECT id, tipo, numero_serie, cuenta_deposito
+       FROM sucursal_terminales WHERE sucursal_id = ? ORDER BY orden, id`,
+    [sucursalId]
+  );
+  const usuarios = await consultar<UsuarioWansoft>(
+    `SELECT id, tipo, usuario, password
+       FROM sucursal_usuarios_wansoft WHERE sucursal_id = ? ORDER BY orden, id`,
+    [sucursalId]
+  );
+  return { terminales, usuarios };
+}
+
+function leerTerminales(lista: any): { tipo: string; numero_serie: string | null; cuenta_deposito: string | null }[] {
+  if (!Array.isArray(lista)) return [];
+  return lista
+    .map((t) => ({
+      tipo: texto(t.tipo, "tipo de terminal", { max: 40 }),
+      numero_serie: textoOpcional(t.numero_serie, "número de serie", { max: 120 }),
+      cuenta_deposito: textoOpcional(t.cuenta_deposito, "cuenta a depositar", { max: 120 }),
+    }));
+}
+
+function leerUsuarios(lista: any): { tipo: string | null; usuario: string; password: string | null }[] {
+  if (!Array.isArray(lista)) return [];
+  return lista
+    .map((u) => ({
+      tipo: textoOpcional(u.tipo, "tipo de usuario", { max: 60 }),
+      usuario: texto(u.usuario, "usuario", { max: 120 }),
+      password: textoOpcional(u.password, "contraseña", { max: 255 }),
+    }));
+}
+
+/** Reemplaza (borra e inserta) las terminales y usuarios de una sucursal. */
+export async function guardarExtras(
+  sucursalId: number,
+  datos: any
+): Promise<{ terminales: number; usuarios: number }> {
+  await existeSucursal(sucursalId);
+  const terminales = leerTerminales(datos?.terminales);
+  const usuarios = leerUsuarios(datos?.usuarios);
+
+  return enTransaccion(async (cx) => {
+    await cx.execute("DELETE FROM sucursal_terminales WHERE sucursal_id = ?", [sucursalId]);
+    for (let i = 0; i < terminales.length; i++) {
+      const t = terminales[i];
+      await cx.execute(
+        `INSERT INTO sucursal_terminales (sucursal_id, tipo, numero_serie, cuenta_deposito, orden)
+         VALUES (?, ?, ?, ?, ?)`,
+        [sucursalId, t.tipo, t.numero_serie, t.cuenta_deposito, i]
+      );
+    }
+
+    await cx.execute("DELETE FROM sucursal_usuarios_wansoft WHERE sucursal_id = ?", [sucursalId]);
+    for (let i = 0; i < usuarios.length; i++) {
+      const u = usuarios[i];
+      await cx.execute(
+        `INSERT INTO sucursal_usuarios_wansoft (sucursal_id, tipo, usuario, password, orden)
+         VALUES (?, ?, ?, ?, ?)`,
+        [sucursalId, u.tipo, u.usuario, u.password, i]
+      );
+    }
+
+    return { terminales: terminales.length, usuarios: usuarios.length };
+  });
+}
+
+/** Todas las sucursales con sus terminales y usuarios (para exportar). */
+export async function exportarTodo(): Promise<any[]> {
+  const sucursales = await listar(false);
+  const resultado = [];
+  for (const s of sucursales) {
+    const extras = await listarExtras(s.id);
+    resultado.push({ ...s, terminales: extras.terminales, usuarios: extras.usuarios });
+  }
+  return resultado;
 }

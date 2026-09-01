@@ -594,6 +594,15 @@ h1, h2, h3 { font-family: var(--font-titulo); font-weight: 400; text-transform: 
   font-weight: 800; font-size: 0.82rem; cursor: pointer; white-space: nowrap; padding: 0;
 }
 .ws-vermas:hover { text-decoration: underline; }
+
+/* ---------- Grid editable (terminales / usuarios por sucursal) ---------- */
+.ws-grid-edit { display: flex; flex-direction: column; gap: 0.7rem; }
+.ws-grid-edit__fila {
+  display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 0.7rem; align-items: end;
+  padding: 0.7rem; border: 1px solid var(--gris-claro); border-radius: 10px; background: var(--blanco);
+}
+.ws-grid-edit__quitar { align-self: end; height: 42px; }
+@media (max-width: 680px) { .ws-grid-edit__fila { grid-template-columns: 1fr 1fr; } }
 .ws-periodo__inputs { display: flex; gap: 0.8rem; flex-wrap: wrap; align-items: end; }
 .ws-periodo__inputs .campo { min-width: 150px; }
 .ws-periodo__etq {
