@@ -136,6 +136,7 @@ CREATE TABLE IF NOT EXISTS terminales (
 -- sucursal_id NULL = "Administrativo". password se guarda en claro (informativo).
 CREATE TABLE IF NOT EXISTS usuarios_plataforma (
   id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  nombre        VARCHAR(160) NULL,              -- nombre de la persona / titular
   plataforma    VARCHAR(60)  NOT NULL,          -- Wansoft, Bonsaif, Didi, Rappi, Uber Eats
   usuario       VARCHAR(160) NOT NULL,
   password      VARCHAR(255) NULL,

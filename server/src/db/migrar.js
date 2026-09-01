@@ -73,6 +73,7 @@ async function migrar({ forzar }) {
     // añadimos, de forma idempotente, las columnas que falten en bases viejas.
     await asegurarColumna(conexion, "wansoft_sucursales", "alias", "VARCHAR(160) NULL AFTER nombre");
     await asegurarColumna(conexion, "terminales", "notas", "VARCHAR(500) NULL AFTER cuenta");
+    await asegurarColumna(conexion, "usuarios_plataforma", "nombre", "VARCHAR(160) NULL AFTER id");
 
     const [tablas] = await conexion.query("SHOW TABLES");
     console.log(`\n✅ Listo. La base tiene ${tablas.length} tablas.`);

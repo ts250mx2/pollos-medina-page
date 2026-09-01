@@ -10,7 +10,7 @@ import RegistroModal from "@/components/RegistroModal";
 interface SucursalRef { id: number; nombre: string }
 const PLATAFORMAS = ["Wansoft", "Bonsaif", "Didi", "Rappi", "Uber Eats"];
 const TIPOS = ["Usuario", "Administrador"];
-const CAMPOS = ["plataforma", "usuario", "password", "tipo_usuario", "sucursal_id", "url"] as const;
+const CAMPOS = ["nombre", "plataforma", "usuario", "password", "tipo_usuario", "sucursal_id", "url"] as const;
 
 interface Props { sucursales: SucursalRef[]; onToast: (msg: string) => void }
 
@@ -27,6 +27,7 @@ export default function UsuariosPlataformaPanel({ sucursales, onToast }: Props) 
   );
 
   const columnas: GridColumn[] = useMemo(() => [
+    { key: "nombre", label: "Nombre", type: "text", placeholder: "Nombre del titular" },
     { key: "plataforma", label: "Plataforma", type: "select", required: true, options: [{ value: "", label: "— Elige —" }, ...PLATAFORMAS.map((p) => ({ value: p, label: p }))] },
     { key: "usuario", label: "Usuario", type: "text", required: true },
     { key: "password", label: "Password", type: "text", placeholder: "Visible" },
@@ -44,7 +45,7 @@ export default function UsuariosPlataformaPanel({ sucursales, onToast }: Props) 
         if (d.ok) {
           setRows((d.usuarios || []).map((u: any) => ({
             _id: nuevoId(),
-            plataforma: u.plataforma || "", usuario: u.usuario || "", password: u.password || "",
+            nombre: u.nombre || "", plataforma: u.plataforma || "", usuario: u.usuario || "", password: u.password || "",
             tipo_usuario: u.tipo_usuario || "Usuario", sucursal_id: u.sucursal_id ? String(u.sucursal_id) : "", url: u.url || "",
           })));
         } else onToast(d.error || "No se pudieron cargar los usuarios.");
@@ -55,7 +56,7 @@ export default function UsuariosPlataformaPanel({ sucursales, onToast }: Props) 
 
   const persistir = async (next: GridRow[]) => {
     setRows(next);
-    const usuarios = next.map((r) => ({ plataforma: r.plataforma, usuario: r.usuario, password: r.password, tipo_usuario: r.tipo_usuario, sucursal_id: r.sucursal_id, url: r.url }));
+    const usuarios = next.map((r) => ({ nombre: r.nombre, plataforma: r.plataforma, usuario: r.usuario, password: r.password, tipo_usuario: r.tipo_usuario, sucursal_id: r.sucursal_id, url: r.url }));
     try {
       const res = await fetch("/api/admin/usuarios-plataforma", {
         method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ usuarios }),
@@ -74,7 +75,7 @@ export default function UsuariosPlataformaPanel({ sucursales, onToast }: Props) 
     return valores;
   };
 
-  const abrirNuevo = () => setModal({ editId: null, valores: { plataforma: "", usuario: "", password: "", tipo_usuario: "Usuario", sucursal_id: "", url: "" } });
+  const abrirNuevo = () => setModal({ editId: null, valores: { nombre: "", plataforma: "", usuario: "", password: "", tipo_usuario: "Usuario", sucursal_id: "", url: "" } });
   const abrirEditar = (id: number) => {
     const r = rows.find((x) => x._id === id);
     if (r) setModal({ editId: id, valores: Object.fromEntries(CAMPOS.map((k) => [k, String(r[k] ?? "")])) });
@@ -93,8 +94,8 @@ export default function UsuariosPlataformaPanel({ sucursales, onToast }: Props) 
     onToast("Usuario borrado.");
   };
 
-  const HEADERS = ["Plataforma", "Usuario", "Password", "Tipo de usuario", "Sucursal", "URL"];
-  const datos = (): string[][] => rows.map((r) => [r.plataforma, r.usuario, r.password, r.tipo_usuario, nombreSucursal(r.sucursal_id), r.url]);
+  const HEADERS = ["Nombre", "Plataforma", "Usuario", "Password", "Tipo de usuario", "Sucursal", "URL"];
+  const datos = (): string[][] => rows.map((r) => [r.nombre, r.plataforma, r.usuario, r.password, r.tipo_usuario, nombreSucursal(r.sucursal_id), r.url]);
   const exportarExcel = () => descargarExcel("usuarios-plataforma", "Usuarios de plataforma", HEADERS, datos());
   const exportarPDF = () => { if (!imprimirPDF("Usuarios de plataforma", HEADERS, datos())) onToast("El navegador bloqueó la impresión."); };
 

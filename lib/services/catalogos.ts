@@ -18,6 +18,7 @@ export interface TerminalRow {
 
 export interface UsuarioPlataformaRow {
   id: number;
+  nombre: string | null;
   plataforma: string;
   usuario: string;
   password: string | null;
@@ -69,13 +70,14 @@ export async function guardarTerminales(datos: any): Promise<{ total: number }> 
 
 export async function listarUsuariosPlataforma(): Promise<UsuarioPlataformaRow[]> {
   return consultar<UsuarioPlataformaRow>(
-    "SELECT id, plataforma, usuario, password, tipo_usuario, sucursal_id, url FROM usuarios_plataforma ORDER BY orden, id"
+    "SELECT id, nombre, plataforma, usuario, password, tipo_usuario, sucursal_id, url FROM usuarios_plataforma ORDER BY orden, id"
   );
 }
 
 function leerUsuarios(lista: any) {
   if (!Array.isArray(lista)) return [];
   return lista.map((u) => ({
+    nombre: textoOpcional(u.nombre, "nombre", { max: 160 }),
     plataforma: texto(u.plataforma, "plataforma", { max: 60 }),
     usuario: texto(u.usuario, "usuario", { max: 160 }),
     password: textoOpcional(u.password, "contraseña", { max: 255 }),
@@ -92,9 +94,9 @@ export async function guardarUsuariosPlataforma(datos: any): Promise<{ total: nu
     for (let i = 0; i < filas.length; i++) {
       const u = filas[i];
       await cx.execute(
-        `INSERT INTO usuarios_plataforma (plataforma, usuario, password, tipo_usuario, sucursal_id, url, orden)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [u.plataforma, u.usuario, u.password, u.tipo_usuario, u.sucursal_id, u.url, i]
+        `INSERT INTO usuarios_plataforma (nombre, plataforma, usuario, password, tipo_usuario, sucursal_id, url, orden)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [u.nombre, u.plataforma, u.usuario, u.password, u.tipo_usuario, u.sucursal_id, u.url, i]
       );
     }
     return { total: filas.length };
