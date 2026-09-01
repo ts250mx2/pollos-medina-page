@@ -20,29 +20,58 @@ function tabla(encabezados: string[], filas: string[][]): string {
   return `<table><thead><tr>${th}</tr></thead><tbody>${tr}</tbody></table>`;
 }
 
-/** Construye las tres tablas (sucursales, terminales, usuarios) como HTML. */
-function contenido(sucursales: Fila[]): string {
-  const suc = tabla(
-    ["Sucursal", "Dirección", "Colonia", "Ciudad", "Teléfono", "WhatsApp", "Horario", "Visible"],
-    sucursales.map((s) => [s.nombre, s.direccion, s.colonia || "", s.ciudad || "", s.telefono || "", s.whatsapp || "", s.horario || "", s.activo ? "Sí" : "No"])
-  );
+/** Tabla vertical campo/valor para los datos de una sucursal. */
+function tablaDatos(filas: [string, string][]): string {
+  const tr = filas.map(([k, v]) => `<tr><th class="kv">${esc(k)}</th><td>${esc(v)}</td></tr>`).join("");
+  return `<table class="datos">${tr}</table>`;
+}
 
-  const term: string[][] = [];
-  const usr: string[][] = [];
-  for (const s of sucursales) {
-    for (const t of s.terminales || []) term.push([s.nombre, t.tipo, t.numero_serie || "", t.cuenta_deposito || ""]);
-    for (const u of s.usuarios || []) usr.push([s.nombre, u.tipo || "", u.usuario, u.password || ""]);
-  }
+/** Un bloque por sucursal: sus datos + terminales + usuarios juntos. */
+function bloqueSucursal(s: Fila): string {
+  const term = tabla(
+    ["Tipo", "Número de serie", "Cuenta a depositar"],
+    (s.terminales || []).map((t: Fila) => [t.tipo, t.numero_serie || "", t.cuenta_deposito || ""])
+  );
+  const usr = tabla(
+    ["Tipo de usuario", "Usuario", "Contraseña"],
+    (s.usuarios || []).map((u: Fila) => [u.tipo || "", u.usuario, u.password || ""])
+  );
+  return `
+    <section class="suc">
+      <h2>${esc(s.nombre)} ${s.activo ? "" : "<small>(oculta)</small>"}</h2>
+      ${tablaDatos([
+        ["Dirección", s.direccion || ""],
+        ["Colonia", s.colonia || ""],
+        ["Ciudad", s.ciudad || ""],
+        ["Teléfono", s.telefono || ""],
+        ["WhatsApp", s.whatsapp || ""],
+        ["Horario", s.horario || ""],
+        ["Mapa", s.mapa_url || ""],
+      ])}
+      <h3>Terminales de pago</h3>
+      ${term}
+      <h3>Usuarios Wansoft</h3>
+      ${usr}
+    </section>
+  `;
+}
+
+/** Documento completo: resumen + un bloque con todo por cada sucursal. */
+function contenido(sucursales: Fila[]): string {
+  const resumen = tabla(
+    ["Sucursal", "Dirección", "Ciudad", "Teléfono", "Horario", "Terminales", "Usuarios", "Visible"],
+    sucursales.map((s) => [
+      s.nombre, s.direccion || "", s.ciudad || "", s.telefono || "", s.horario || "",
+      String((s.terminales || []).length), String((s.usuarios || []).length), s.activo ? "Sí" : "No",
+    ])
+  );
 
   return `
     <h1>Sucursales — Pollo Medina</h1>
     <p class="meta">Generado el ${hoy()} · ${sucursales.length} sucursales</p>
-    <h2>Sucursales</h2>
-    ${suc}
-    <h2>Terminales de pago</h2>
-    ${tabla(["Sucursal", "Tipo", "Número de serie", "Cuenta a depositar"], term)}
-    <h2>Usuarios Wansoft</h2>
-    ${tabla(["Sucursal", "Tipo de usuario", "Usuario", "Contraseña"], usr)}
+    <h2>Resumen</h2>
+    ${resumen}
+    ${sucursales.map(bloqueSucursal).join("")}
   `;
 }
 
@@ -50,10 +79,16 @@ const ESTILOS = `
   body { font-family: Arial, Helvetica, sans-serif; color: #1a1512; padding: 24px; }
   h1 { font-size: 20px; margin: 0 0 4px; color: #e4022a; }
   h2 { font-size: 15px; margin: 22px 0 8px; border-bottom: 2px solid #e4022a; padding-bottom: 3px; }
+  h3 { font-size: 12px; margin: 12px 0 4px; color: #6f6862; text-transform: uppercase; letter-spacing: 0.03em; }
+  h2 small { font-size: 11px; color: #9a9088; font-weight: 400; }
   .meta { color: #6f6862; font-size: 12px; margin: 0 0 8px; }
   table { border-collapse: collapse; width: 100%; margin-bottom: 8px; font-size: 12px; }
   th, td { border: 1px solid #d9d2ca; padding: 5px 8px; text-align: left; vertical-align: top; }
   th { background: #f3ede6; font-weight: 700; }
+  table.datos { width: auto; min-width: 60%; margin-bottom: 10px; }
+  table.datos th.kv { background: #faf7f3; width: 130px; }
+  .suc { margin-top: 18px; }
+  @media print { .suc { page-break-inside: avoid; } }
 `;
 
 /** Descarga un archivo que Excel abre directamente (.xls con tablas HTML). */
