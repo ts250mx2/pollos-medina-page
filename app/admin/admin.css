@@ -595,16 +595,28 @@ h1, h2, h3 { font-family: var(--font-titulo); font-weight: 400; text-transform: 
 }
 .ws-vermas:hover { text-decoration: underline; }
 
-/* ---------- Grids editables de catálogos (terminales / usuarios) ---------- */
-.cat-grid { display: flex; flex-direction: column; gap: 0.6rem; }
-.cat-fila {
-  display: grid; gap: 0.6rem; align-items: end;
-  padding: 0.7rem; border: 1px solid var(--gris-claro); border-radius: 10px; background: var(--blanco);
+/* ---------- Grid editable con filtros y ordenamiento (catálogos) ---------- */
+.grid-wrap { overflow-x: auto; border: 1px solid var(--gris-claro); border-radius: 10px; background: var(--blanco); }
+.grid-tabla { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.grid-tabla th, .grid-tabla td { padding: 4px 6px; border-bottom: 1px solid var(--gris-claro); text-align: left; vertical-align: middle; }
+.grid-tabla thead th { position: sticky; top: 0; background: var(--gris-claro); z-index: 1; }
+.grid-orden {
+  background: none; border: none; padding: 6px 2px; font-weight: 800; font-size: 0.82rem;
+  color: var(--negro); cursor: pointer; white-space: nowrap; width: 100%; text-align: left;
 }
-.cat-fila--term { grid-template-columns: 1.2fr 1fr 1fr 1fr auto; }
-.cat-fila--user { grid-template-columns: 1fr 1fr 1fr 0.9fr 1.1fr 1.4fr auto; }
-.ws-grid-edit__quitar { align-self: end; height: 42px; }
-@media (max-width: 900px) { .cat-fila--term, .cat-fila--user { grid-template-columns: 1fr 1fr; } }
+.grid-orden:hover { color: var(--rojo); }
+.grid-filtros th { background: var(--blanco); padding: 4px 6px 6px; }
+.grid-filtros input {
+  width: 100%; padding: 0.3rem 0.5rem; font-size: 0.78rem; border: 1px solid var(--gris-claro);
+  border-radius: 6px; background: #faf7f3;
+}
+.grid-tabla tbody td input, .grid-tabla tbody td select {
+  width: 100%; min-width: 90px; padding: 0.35rem 0.45rem; font-size: 0.82rem;
+  border: 1px solid var(--gris-claro); border-radius: 6px; background: var(--blanco);
+}
+.grid-tabla tbody tr:hover td { background: #faf7f3; }
+.grid-acc { width: 46px; text-align: center; }
+.grid-tabla td.ws-vacio { padding: 1.2rem; text-align: center; }
 .ws-periodo__inputs { display: flex; gap: 0.8rem; flex-wrap: wrap; align-items: end; }
 .ws-periodo__inputs .campo { min-width: 150px; }
 .ws-periodo__etq {
