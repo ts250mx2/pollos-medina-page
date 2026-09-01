@@ -595,14 +595,16 @@ h1, h2, h3 { font-family: var(--font-titulo); font-weight: 400; text-transform: 
 }
 .ws-vermas:hover { text-decoration: underline; }
 
-/* ---------- Grid editable (terminales / usuarios por sucursal) ---------- */
-.ws-grid-edit { display: flex; flex-direction: column; gap: 0.7rem; }
-.ws-grid-edit__fila {
-  display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 0.7rem; align-items: end;
+/* ---------- Grids editables de catálogos (terminales / usuarios) ---------- */
+.cat-grid { display: flex; flex-direction: column; gap: 0.6rem; }
+.cat-fila {
+  display: grid; gap: 0.6rem; align-items: end;
   padding: 0.7rem; border: 1px solid var(--gris-claro); border-radius: 10px; background: var(--blanco);
 }
+.cat-fila--term { grid-template-columns: 1.2fr 1fr 1fr 1fr auto; }
+.cat-fila--user { grid-template-columns: 1fr 1fr 1fr 0.9fr 1.1fr 1.4fr auto; }
 .ws-grid-edit__quitar { align-self: end; height: 42px; }
-@media (max-width: 680px) { .ws-grid-edit__fila { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 900px) { .cat-fila--term, .cat-fila--user { grid-template-columns: 1fr 1fr; } }
 .ws-periodo__inputs { display: flex; gap: 0.8rem; flex-wrap: wrap; align-items: end; }
 .ws-periodo__inputs .campo { min-width: 150px; }
 .ws-periodo__etq {

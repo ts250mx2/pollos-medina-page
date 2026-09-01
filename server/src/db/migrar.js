@@ -48,6 +48,10 @@ async function migrar({ forzar }) {
       await conexion.query("SET FOREIGN_KEY_CHECKS = 1");
     }
 
+    // Tablas reemplazadas por el catálogo global (terminales / usuarios_plataforma).
+    await conexion.query("DROP TABLE IF EXISTS sucursal_terminales");
+    await conexion.query("DROP TABLE IF EXISTS sucursal_usuarios_wansoft");
+
     const sql = fs.readFileSync(path.join(__dirname, "esquema.sql"), "utf8");
     const sinComentarios = sql
       .split(/\r?\n/)

@@ -115,34 +115,38 @@ CREATE TABLE IF NOT EXISTS sucursales (
   KEY ix_sucursales_orden (orden)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ---------- Terminales de pago por sucursal ----------
-CREATE TABLE IF NOT EXISTS sucursal_terminales (
-  id              INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  sucursal_id     INT UNSIGNED NOT NULL,
-  tipo            VARCHAR(40)  NOT NULL,        -- Spin, Clip, Mercado Pago, …
-  numero_serie    VARCHAR(120) NULL,
-  cuenta_deposito VARCHAR(120) NULL,
-  orden           INT          NOT NULL DEFAULT 0,
-  creado_en       TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+-- ---------- Catálogo de terminales de pago ----------
+-- sucursal_id NULL = "Sin asignar".
+CREATE TABLE IF NOT EXISTS terminales (
+  id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  sucursal_id   INT UNSIGNED NULL,
+  tipo          VARCHAR(40)  NOT NULL,          -- Spin, Clip, Mercado Pago
+  numero_serie  VARCHAR(120) NULL,
+  cuenta        VARCHAR(120) NULL,
+  orden         INT          NOT NULL DEFAULT 0,
+  creado_en     TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
-  KEY ix_term_sucursal (sucursal_id),
-  CONSTRAINT fk_term_sucursal FOREIGN KEY (sucursal_id)
-    REFERENCES sucursales (id) ON DELETE CASCADE ON UPDATE CASCADE
+  KEY ix_terminales_sucursal (sucursal_id),
+  CONSTRAINT fk_terminales_sucursal FOREIGN KEY (sucursal_id)
+    REFERENCES sucursales (id) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ---------- Usuarios de Wansoft por sucursal (referencia; password visible) ----------
-CREATE TABLE IF NOT EXISTS sucursal_usuarios_wansoft (
-  id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  sucursal_id  INT UNSIGNED NOT NULL,
-  tipo         VARCHAR(60)  NULL,               -- tipo de usuario
-  usuario      VARCHAR(120) NOT NULL,
-  password     VARCHAR(255) NULL,               -- guardado en claro a propósito (consulta)
-  orden        INT          NOT NULL DEFAULT 0,
-  creado_en    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+-- ---------- Usuarios de plataformas (Wansoft, apps de reparto, etc.) ----------
+-- sucursal_id NULL = "Administrativo". password se guarda en claro (informativo).
+CREATE TABLE IF NOT EXISTS usuarios_plataforma (
+  id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  plataforma    VARCHAR(60)  NOT NULL,          -- Wansoft, Bonsaif, Didi, Rappi, Uber Eats
+  usuario       VARCHAR(160) NOT NULL,
+  password      VARCHAR(255) NULL,
+  tipo_usuario  VARCHAR(20)  NOT NULL DEFAULT 'Usuario',  -- Usuario | Administrador
+  sucursal_id   INT UNSIGNED NULL,
+  url           VARCHAR(500) NULL,
+  orden         INT          NOT NULL DEFAULT 0,
+  creado_en     TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
-  KEY ix_wu_sucursal (sucursal_id),
-  CONSTRAINT fk_wu_sucursal FOREIGN KEY (sucursal_id)
-    REFERENCES sucursales (id) ON DELETE CASCADE ON UPDATE CASCADE
+  KEY ix_up_sucursal (sucursal_id),
+  CONSTRAINT fk_up_sucursal FOREIGN KEY (sucursal_id)
+    REFERENCES sucursales (id) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------- Destacados de la portada (foto principal + promos) ----------
