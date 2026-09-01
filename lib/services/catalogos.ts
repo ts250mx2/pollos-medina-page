@@ -13,6 +13,7 @@ export interface TerminalRow {
   tipo: string;
   numero_serie: string | null;
   cuenta: string | null;
+  notas: string | null;
 }
 
 export interface UsuarioPlataformaRow {
@@ -34,7 +35,7 @@ const aSucursalId = (v: any): number | null => {
 
 export async function listarTerminales(): Promise<TerminalRow[]> {
   return consultar<TerminalRow>(
-    "SELECT id, sucursal_id, tipo, numero_serie, cuenta FROM terminales ORDER BY orden, id"
+    "SELECT id, sucursal_id, tipo, numero_serie, cuenta, notas FROM terminales ORDER BY orden, id"
   );
 }
 
@@ -45,6 +46,7 @@ function leerTerminales(lista: any) {
     tipo: texto(t.tipo, "tipo de terminal", { max: 40 }),
     numero_serie: textoOpcional(t.numero_serie, "número de serie", { max: 120 }),
     cuenta: textoOpcional(t.cuenta, "cuenta", { max: 120 }),
+    notas: textoOpcional(t.notas, "notas", { max: 500 }),
   }));
 }
 
@@ -55,8 +57,8 @@ export async function guardarTerminales(datos: any): Promise<{ total: number }> 
     for (let i = 0; i < filas.length; i++) {
       const t = filas[i];
       await cx.execute(
-        "INSERT INTO terminales (sucursal_id, tipo, numero_serie, cuenta, orden) VALUES (?, ?, ?, ?, ?)",
-        [t.sucursal_id, t.tipo, t.numero_serie, t.cuenta, i]
+        "INSERT INTO terminales (sucursal_id, tipo, numero_serie, cuenta, notas, orden) VALUES (?, ?, ?, ?, ?, ?)",
+        [t.sucursal_id, t.tipo, t.numero_serie, t.cuenta, t.notas, i]
       );
     }
     return { total: filas.length };

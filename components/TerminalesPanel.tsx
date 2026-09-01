@@ -9,7 +9,7 @@ import RegistroModal from "@/components/RegistroModal";
 
 interface SucursalRef { id: number; nombre: string }
 const TIPOS = ["Spin", "Clip", "Mercado Pago"];
-const CAMPOS = ["sucursal_id", "tipo", "numero_serie", "cuenta"] as const;
+const CAMPOS = ["sucursal_id", "tipo", "numero_serie", "cuenta", "notas"] as const;
 
 interface Props { sucursales: SucursalRef[]; onToast: (msg: string) => void }
 
@@ -30,6 +30,7 @@ export default function TerminalesPanel({ sucursales, onToast }: Props) {
     { key: "tipo", label: "Tipo", type: "select", required: true, options: [{ value: "", label: "— Elige —" }, ...TIPOS.map((t) => ({ value: t, label: t }))] },
     { key: "numero_serie", label: "Número de serie", type: "text", placeholder: "Opcional" },
     { key: "cuenta", label: "Cuenta", type: "text", placeholder: "Opcional" },
+    { key: "notas", label: "Notas", type: "text", placeholder: "Opcional" },
   ], [sucursales]);
 
   useEffect(() => {
@@ -42,7 +43,7 @@ export default function TerminalesPanel({ sucursales, onToast }: Props) {
           setRows((d.terminales || []).map((t: any) => ({
             _id: nuevoId(),
             sucursal_id: t.sucursal_id ? String(t.sucursal_id) : "",
-            tipo: t.tipo || "", numero_serie: t.numero_serie || "", cuenta: t.cuenta || "",
+            tipo: t.tipo || "", numero_serie: t.numero_serie || "", cuenta: t.cuenta || "", notas: t.notas || "",
           })));
         } else onToast(d.error || "No se pudieron cargar las terminales.");
       } catch { onToast("Error de conexión."); }
@@ -53,7 +54,7 @@ export default function TerminalesPanel({ sucursales, onToast }: Props) {
   // Persiste la lista completa (reemplazo) y actualiza el estado local.
   const persistir = async (next: GridRow[]) => {
     setRows(next);
-    const terminales = next.map((r) => ({ sucursal_id: r.sucursal_id, tipo: r.tipo, numero_serie: r.numero_serie, cuenta: r.cuenta }));
+    const terminales = next.map((r) => ({ sucursal_id: r.sucursal_id, tipo: r.tipo, numero_serie: r.numero_serie, cuenta: r.cuenta, notas: r.notas }));
     try {
       const res = await fetch("/api/admin/terminales", {
         method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ terminales }),
@@ -63,7 +64,7 @@ export default function TerminalesPanel({ sucursales, onToast }: Props) {
     } catch { onToast("Error de conexión al guardar."); }
   };
 
-  const abrirNuevo = () => setModal({ editId: null, valores: { sucursal_id: "", tipo: "", numero_serie: "", cuenta: "" } });
+  const abrirNuevo = () => setModal({ editId: null, valores: { sucursal_id: "", tipo: "", numero_serie: "", cuenta: "", notas: "" } });
   const abrirEditar = (id: number) => {
     const r = rows.find((x) => x._id === id);
     if (r) setModal({ editId: id, valores: Object.fromEntries(CAMPOS.map((k) => [k, String(r[k] ?? "")])) });
@@ -82,8 +83,8 @@ export default function TerminalesPanel({ sucursales, onToast }: Props) {
     onToast("Terminal borrada.");
   };
 
-  const HEADERS = ["Sucursal", "Tipo", "Número de serie", "Cuenta"];
-  const datos = (): string[][] => rows.map((r) => [nombreSucursal(r.sucursal_id), displayCelda(r, columnas[1]), r.numero_serie, r.cuenta]);
+  const HEADERS = ["Sucursal", "Tipo", "Número de serie", "Cuenta", "Notas"];
+  const datos = (): string[][] => rows.map((r) => [nombreSucursal(r.sucursal_id), displayCelda(r, columnas[1]), r.numero_serie, r.cuenta, r.notas]);
   const exportarExcel = () => descargarExcel("terminales", "Terminales de pago", HEADERS, datos());
   const exportarPDF = () => { if (!imprimirPDF("Terminales de pago", HEADERS, datos())) onToast("El navegador bloqueó la impresión."); };
 

@@ -72,6 +72,7 @@ async function migrar({ forzar }) {
     // CREATE TABLE IF NOT EXISTS no toca tablas existentes, así que aquí
     // añadimos, de forma idempotente, las columnas que falten en bases viejas.
     await asegurarColumna(conexion, "wansoft_sucursales", "alias", "VARCHAR(160) NULL AFTER nombre");
+    await asegurarColumna(conexion, "terminales", "notas", "VARCHAR(500) NULL AFTER cuenta");
 
     const [tablas] = await conexion.query("SHOW TABLES");
     console.log(`\n✅ Listo. La base tiene ${tablas.length} tablas.`);

@@ -123,6 +123,7 @@ CREATE TABLE IF NOT EXISTS terminales (
   tipo          VARCHAR(40)  NOT NULL,          -- Spin, Clip, Mercado Pago
   numero_serie  VARCHAR(120) NULL,
   cuenta        VARCHAR(120) NULL,
+  notas         VARCHAR(500) NULL,
   orden         INT          NOT NULL DEFAULT 0,
   creado_en     TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
