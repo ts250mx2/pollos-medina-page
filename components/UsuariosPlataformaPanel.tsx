@@ -47,20 +47,20 @@ export default function UsuariosPlataformaPanel({ sucursales, onToast }: Props) 
     })();
   }, [onToast]);
 
-  // Busca en las filas ya capturadas una URL para esa plataforma + tipo de usuario.
-  const urlPrevia = (filasActuales: Fila[], plataforma: string, tipo: string): string => {
-    const match = filasActuales.find((f) => f.plataforma === plataforma && f.tipo_usuario === tipo && f.url.trim());
+  // Busca en las filas ya capturadas una URL para esa plataforma.
+  const urlPrevia = (filasActuales: Fila[], plataforma: string): string => {
+    const match = filasActuales.find((f) => f.plataforma === plataforma && f.url.trim());
     return match ? match.url : "";
   };
 
   const set = (i: number, campo: keyof Fila, valor: string) =>
     setFilas((prev) => {
       const next = prev.map((f, j) => (j === i ? { ...f, [campo]: valor } : f));
-      // Autollenar URL cuando cambian plataforma o tipo y la URL está vacía.
-      if (campo === "plataforma" || campo === "tipo_usuario") {
+      // Autollenar URL al elegir la plataforma, si la URL está vacía.
+      if (campo === "plataforma") {
         const f = next[i];
         if (!f.url.trim()) {
-          const sugerida = urlPrevia(next, f.plataforma, f.tipo_usuario);
+          const sugerida = urlPrevia(next, f.plataforma);
           if (sugerida) next[i] = { ...f, url: sugerida };
         }
       }
