@@ -191,23 +191,23 @@ Las **sucursales** se muestran con un **alias amigable** (p. ej. Wansoft las lla
 
 ### Cómo entran los datos
 
-1. **Scraper automatizado (principal).** La carpeta [`wansoft-scraper/`](wansoft-scraper/)
-   entra a Wansoft con un navegador headless (Playwright) y llama al endpoint del reporte
-   `GetConsolidatedSales` para bajar las ventas de cada sucursal, día por día. Lo dispara el
-   botón **Dashboard → Conexión → “Sincronizar ahora”** y un **cron** cada hora.
-   - Wansoft protege el login con **Cloudflare Turnstile** (CAPTCHA). La **primera vez** se
-     corre con el navegador visible (`HEADFUL=1`) para resolver el captcha una sola vez; la
-     sesión queda guardada en un perfil de Chrome y luego el cron entra solo hasta que caduque.
-   - Ver [`wansoft-scraper/README.md`](wansoft-scraper/README.md) para instalación y cron.
+1. **Sincronización HTTP automatizada (principal).** La carpeta [`wansoft-scraper/`](wansoft-scraper/)
+   llama a los endpoints de reportes sin abrir navegador. Next.js la ejecuta al arrancar, cada
+   hora para el día actual y a las 00:30 para cerrar el día anterior. El botón
+   **Dashboard → Conexión → “Sincronizar ahora”** usa el mismo ejecutor.
+   - La sesión se siembra una vez con una cookie obtenida tras iniciar sesión normalmente en
+     Chrome. Cuando Wansoft la caduque, el panel mostrará que hay que renovarla.
+   - Un bloqueo de MySQL evita duplicados entre la programación, el botón y varias instancias.
+   - Ver [`wansoft-scraper/README.md`](wansoft-scraper/README.md) para la instalación.
 2. **Importar / pegar.** En **Cargar datos** se pega la tabla del reporte o un CSV. Se
    reconocen columnas como `Sucursal`, `Fecha`, `Venta neta`, `Descuentos`, `Impuestos`,
    `Venta total`, `Cuentas`, `Comensales`, `Efectivo`, `Tarjeta`.
 3. **Captura manual.** Para corregir o cargar un día suelto.
 
 ```bash
-cd wansoft-scraper && npm install && npx playwright install chromium
-HEADFUL=1 node scrape.mjs --month 2026-08   # 1ª vez: resuelve el captcha y carga el mes
-node scrape.mjs                             # después: día de hoy (cron/botón)
+cd wansoft-scraper && npm install --omit=optional
+node sembrar-cookie.mjs "PEGA_AQUI_LA_COOKIE" # una vez o cuando caduque
+node scrape-http.mjs --month 2026-08          # backfill opcional
 ```
 
 ### Tablas nuevas

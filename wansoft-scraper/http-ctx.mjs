@@ -7,7 +7,7 @@
 
 /** Error especifico: la cookie caduco y hay que volver a sembrar con navegador. */
 export class SesionVencida extends Error {
-  constructor(msg = "La sesion de Wansoft caduco. Vuelve a sembrarla con: HEADFUL=1 node sembrar-sesion.mjs") {
+  constructor(msg = "La sesion de Wansoft caduco. Renuevala con: node sembrar-cookie.mjs \"COOKIE\"") {
     super(msg);
     this.name = "SesionVencida";
     this.code = "SESION_VENCIDA";

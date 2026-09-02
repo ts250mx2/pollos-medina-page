@@ -23,6 +23,20 @@ export async function getConnection() {
   });
 }
 
+// Evita que el programador, el arranque del servidor y el botón del panel
+// escriban al mismo tiempo. Al ser un bloqueo de MySQL también coordina varias
+// instancias de la aplicación.
+const SYNC_LOCK = "pollos_medina_wansoft_sync";
+
+export async function adquirirBloqueoSync(conn) {
+  const [filas] = await conn.execute("SELECT GET_LOCK(?, 0) AS adquirido", [SYNC_LOCK]);
+  return Number(filas[0]?.adquirido) === 1;
+}
+
+export async function liberarBloqueoSync(conn) {
+  await conn.execute("SELECT RELEASE_LOCK(?)", [SYNC_LOCK]).catch(() => {});
+}
+
 // ---------- Sesion de Wansoft (cookie sembrada una vez con navegador) ----------
 
 /** Guarda la cookie de sesion en la fila unica (id=1) de wansoft_credenciales. */

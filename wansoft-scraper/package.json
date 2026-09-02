@@ -5,11 +5,13 @@
   "type": "module",
   "description": "Consulta automatizada de Wansoft (Ventas por sucursal) y guardado en BDPollosMedinaMenu para el dashboard del panel.",
   "scripts": {
-    "scrape": "node scrape.mjs",
-    "hoy": "node scrape.mjs",
-    "ayer": "node scrape.mjs --yesterday",
-    "dry": "node scrape.mjs --dry",
+    "test": "node --test *.test.mjs",
+    "scrape": "node scrape-http.mjs",
+    "hoy": "node scrape-http.mjs",
+    "ayer": "node scrape-http.mjs --yesterday",
+    "dry": "node scrape-http.mjs --dry",
     "sembrar": "node sembrar-sesion.mjs",
+    "browser": "node scrape.mjs",
     "http": "node scrape-http.mjs",
     "http:ayer": "node scrape-http.mjs --yesterday",
     "http:dry": "node scrape-http.mjs --dry"

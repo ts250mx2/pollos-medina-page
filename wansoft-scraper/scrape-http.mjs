@@ -12,6 +12,7 @@
 //   node scrape-http.mjs --date 2026-08-15   una fecha
 //   node scrape-http.mjs --month 2026-08     todo el mes (backfill), dia por dia
 //   node scrape-http.mjs --from 2026-08-01 --to 2026-08-22
+//   node scrape-http.mjs --dates 2026-08-01,2026-08-05   dias concretos
 //   node scrape-http.mjs --branch 123        una sola sucursal (id de Wansoft)
 //   node scrape-http.mjs --dry               no toca la BD, solo imprime
 //
@@ -24,6 +25,7 @@ import {
 import {
   getConnection, leerSesion, marcarSesionVencida, resolveBranch,
   upsertVenta, upsertProducto, upsertCategoria, upsertReporte, logInicio, logFin,
+  adquirirBloqueoSync, liberarBloqueoSync,
 } from "./db.mjs";
 import { resolverDias, argVal as argValDe } from "./fechas.mjs";
 import { crearCtxHTTP, SesionVencida } from "./http-ctx.mjs";
@@ -43,16 +45,28 @@ export async function runOnce() {
 
   // La cookie vive en MySQL, asi que necesitamos la conexion aunque sea --dry.
   const conn = await getConnection();
+  let bloqueoAdquirido = false;
   let logId = null;
   let filas = 0;
   const errores = [];
 
   try {
+    bloqueoAdquirido = await adquirirBloqueoSync(conn);
+    if (!bloqueoAdquirido) {
+      const summary = {
+        dias: dias.length, filas: 0, errores: 0, estado: "omitido",
+        motivo: "Ya hay otra sincronización en curso",
+      };
+      log(summary.motivo + ".");
+      console.log("SUMMARY " + JSON.stringify(summary));
+      return summary;
+    }
+
     const sesion = await leerSesion(conn);
     if (!sesion || !sesion.cookie) {
       throw new SesionVencida(
-        "No hay sesion sembrada. Corre una vez, en una maquina con pantalla:\n" +
-          "  HEADFUL=1 node sembrar-sesion.mjs"
+        "No hay sesion sembrada. Inicia sesion en Chrome y guarda la cookie:\n" +
+          "  node sembrar-cookie.mjs \"COOKIE\""
       );
     }
     const ctx = crearCtxHTTP(sesion.cookie);
@@ -107,7 +121,7 @@ export async function runOnce() {
     return summary;
   } catch (err) {
     const vencida = err instanceof SesionVencida;
-    if (vencida) await marcarSesionVencida(conn);
+    if (vencida && !DRY) await marcarSesionVencida(conn);
     log(vencida ? "SESIÓN VENCIDA:" : "ERROR FATAL:", err.message);
     if (!DRY && logId) await logFin(conn, logId, "error", dias.length, filas, err.message).catch(() => {});
     console.log("SUMMARY " + JSON.stringify({
@@ -116,6 +130,7 @@ export async function runOnce() {
     }));
     throw err;
   } finally {
+    if (bloqueoAdquirido) await liberarBloqueoSync(conn);
     await conn.end().catch(() => {});
   }
 }

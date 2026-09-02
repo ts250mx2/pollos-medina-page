@@ -105,7 +105,13 @@ Cada corrida hace **UPSERT** por `(sucursal, fecha)`: re-consultar un día lo ac
 duplica. Imprime una línea `SUMMARY {json}` que el panel usa para la bitácora, y registra en
 `wansoft_sync_log`.
 
-## Programar cada hora (cron, servidor Linux)
+## Programación automática
+
+Cuando el scraper vive dentro de este proyecto, Next.js lo inicia automáticamente: actualiza
+el día en curso al arrancar y cada hora, y cierra el día anterior a las 00:30, hora de Ciudad
+de México. Se desactiva con `WANSOFT_AUTO_SYNC=0`. No hace falta agregar un cron.
+
+Si se instala el scraper separado del sitio, estas entradas de cron son una alternativa:
 
 ```cron
 # cada hora, el día en curso (sin navegador)

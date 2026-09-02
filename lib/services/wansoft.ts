@@ -733,3 +733,64 @@ export async function ultimasSync(limite = 10): Promise<any[]> {
      FROM wansoft_sync_log ORDER BY iniciado_en DESC LIMIT ${Math.min(Math.max(limite, 1), 100)}`
   );
 }
+
+export async function estadoSesionWansoft(): Promise<{
+  configurada: boolean;
+  estado: string;
+  actualizado_en: string | null;
+}> {
+  const fila = await unaFila<any>(
+    `SELECT (cookie IS NOT NULL AND cookie <> '') AS configurada, estado, actualizado_en
+     FROM wansoft_credenciales WHERE id = 1 LIMIT 1`
+  );
+  return fila
+    ? { configurada: Boolean(fila.configurada), estado: fila.estado, actualizado_en: fila.actualizado_en }
+    : { configurada: false, estado: "sin_configurar", actualizado_en: null };
+}
+
+export async function guardarSesionWansoft(cookieEntrada: unknown): Promise<void> {
+  const cookie = String(cookieEntrada ?? "").trim();
+  if (cookie.length < 10 || cookie.length > 60_000 || /[\r\n]/.test(cookie)) {
+    throw new ErrorHttp(400, "La cookie de Wansoft no es válida.");
+  }
+  await consultar(
+    `INSERT INTO wansoft_credenciales (id, cookie, estado)
+     VALUES (1, ?, 'activa')
+     ON DUPLICATE KEY UPDATE cookie = VALUES(cookie), estado = 'activa'`,
+    [cookie]
+  );
+}
+
+/** Días que todavía no tienen una fila sincronizada para cada sucursal activa. */
+export async function diasPendientesSync(desde: string, hasta: string): Promise<string[]> {
+  const inicio = new Date(`${desde}T00:00:00Z`);
+  const fin = new Date(`${hasta}T00:00:00Z`);
+  if (Number.isNaN(inicio.valueOf()) || Number.isNaN(fin.valueOf()) || inicio > fin) {
+    throw new ErrorHttp(400, "Rango de fechas inválido.");
+  }
+
+  const sucursales = await consultar<any>(
+    `SELECT id FROM wansoft_sucursales
+     WHERE activo = 1 AND clave IS NOT NULL AND clave <> ''`
+  );
+  if (!sucursales.length) return [];
+
+  const conteos = await consultar<any>(
+    `SELECT v.fecha, COUNT(DISTINCT v.sucursal_id) AS completas
+     FROM wansoft_ventas_diarias v
+     JOIN wansoft_sucursales s ON s.id = v.sucursal_id
+     WHERE v.fecha BETWEEN ? AND ? AND v.origen = 'sync'
+       AND s.activo = 1 AND s.clave IS NOT NULL AND s.clave <> ''
+     GROUP BY v.fecha`,
+    [desde, hasta]
+  );
+  const porFecha = new Map(conteos.map((f) => [String(f.fecha), Number(f.completas)]));
+  const pendientes: string[] = [];
+  const cursor = new Date(inicio);
+  for (let i = 0; cursor <= fin && i < 400; i++, cursor.setUTCDate(cursor.getUTCDate() + 1)) {
+    const fecha = cursor.toISOString().slice(0, 10);
+    if ((porFecha.get(fecha) || 0) < sucursales.length) pendientes.push(fecha);
+  }
+  if (cursor <= fin) throw new ErrorHttp(400, "El rango no puede superar 400 días.");
+  return pendientes;
+}

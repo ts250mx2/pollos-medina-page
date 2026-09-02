@@ -976,6 +976,11 @@ function SucursalesEditor({ sucursales, recargar, onToast }: { sucursales: any[]
 function ConexionView({ mes, onToast, onHecho }: { sucursales: any[]; mes: string; onToast: (m: string) => void; onHecho: () => void }) {
   const [historial, setHistorial] = useState<any[]>([]);
   const [disponible, setDisponible] = useState(true);
+  const [automatizacionActiva, setAutomatizacionActiva] = useState(false);
+  const [sesion, setSesion] = useState<any>(null);
+  const [wansoftReporteUrl, setWansoftReporteUrl] = useState("https://www.wansoft.net/Wansoft.Web/Reports/ConsolidatedSalesMasterReport");
+  const [cookieWansoft, setCookieWansoft] = useState("");
+  const [guardandoCookie, setGuardandoCookie] = useState(false);
   const [ocupado, setOcupado] = useState(false);
   const [resultado, setResultado] = useState<any>(null);
   const [rango, setRango] = useState<{ desde: string; hasta: string }>(() => {
@@ -992,22 +997,47 @@ function ConexionView({ mes, onToast, onHecho }: { sucursales: any[]; mes: strin
 
   const cargarEstado = useCallback(async () => {
     const s = await fetch("/api/admin/wansoft/sync").then((r) => r.json());
-    if (s.ok) { setHistorial(s.historial || []); setDisponible(s.scraperDisponible !== false); }
+    if (s.ok) {
+      setHistorial(s.historial || []);
+      setDisponible(s.scraperDisponible !== false);
+      setAutomatizacionActiva(s.automatizacionActiva === true);
+      setSesion(s.sesion || null);
+      if (s.wansoftReporteUrl) setWansoftReporteUrl(s.wansoftReporteUrl);
+    }
   }, []);
 
   useEffect(() => { cargarEstado(); }, [cargarEstado]);
 
-  const sincronizar = async () => {
+  const guardarCookie = async () => {
+    if (!cookieWansoft.trim()) { onToast("Pega primero la cookie de Wansoft."); return; }
+    setGuardandoCookie(true);
+    try {
+      const res = await fetch("/api/admin/wansoft/credenciales", {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cookie: cookieWansoft }),
+      });
+      const d = await res.json();
+      if (!d.ok) { onToast(d.error || "No se pudo guardar la sesión."); return; }
+      setCookieWansoft("");
+      setSesion(d.sesion);
+      onToast("Sesión de Wansoft guardada. Ya puedes completar los días faltantes.");
+    } catch {
+      onToast("No se pudo guardar la sesión de Wansoft.");
+    } finally { setGuardandoCookie(false); }
+  };
+
+  const sincronizar = async (soloFaltantes = false) => {
     if (!rango.desde || !rango.hasta) { onToast("Indica el rango de fechas."); return; }
     setOcupado(true); setResultado(null);
     try {
       const res = await fetch("/api/admin/wansoft/sync", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ desde: rango.desde, hasta: rango.hasta }),
+        body: JSON.stringify({ desde: rango.desde, hasta: rango.hasta, soloFaltantes }),
       });
       const d = await res.json();
       setResultado(d);
-      if (d.ok) onToast(`Sincronización lista: ${d.summary?.filas ?? 0} filas.`);
+      if (d.sinCambios) onToast("El rango ya está completamente sincronizado.");
+      else if (d.ok) onToast(`Sincronización lista: ${d.summary?.filas ?? 0} filas.`);
       else onToast(d.turnstilePendiente ? "Falta resolver el Turnstile una vez (ver instrucciones)." : (d.error || "Sync con error."));
       cargarEstado(); onHecho();
     } catch {
@@ -1018,29 +1048,54 @@ function ConexionView({ mes, onToast, onHecho }: { sucursales: any[]; mes: strin
   return (
     <div className="ws" style={{ gap: "1.4rem" }}>
       <div className="ws-nota ws-nota--ok">
-        <strong>Sincronización automática (scraper).</strong> El módulo <code>wansoft-scraper/</code> entra a Wansoft con un
-        navegador headless y llama al endpoint del reporte <code>GetConsolidatedSales</code> para bajar las ventas de cada
-        sucursal, día por día. El botón de abajo lo dispara; un <strong>cron</strong> lo corre cada hora en el servidor.
+        <strong>Sincronización automática {automatizacionActiva ? "activa" : "desactivada"}.</strong> El servidor consulta
+        los reportes de Wansoft por HTTP, sin abrir un navegador: actualiza el día en curso al arrancar y cada hora, y
+        hace el cierre del día anterior a las 00:30 (hora de Ciudad de México).
       </div>
 
+      {sesion && (!sesion.configurada || sesion.estado !== "activa") && (
+        <div className="ws-nota ws-nota--warn">
+          <strong>La automatización está en pausa:</strong>{" "}
+          {sesion.configurada ? "la sesión de Wansoft caducó" : "todavía no hay una sesión de Wansoft"}.
+          Renueva la cookie con las instrucciones siguientes.
+        </div>
+      )}
+
       <div className="ws-nota ws-nota--warn">
-        <strong>Primera vez (una sola vez):</strong> Wansoft agregó un CAPTCHA (Cloudflare Turnstile). Para que la sesión
-        quede guardada, corre el scraper una vez con el navegador visible y resuelve el captcha a mano. Después, el cron entra solo:
-        <ol className="ws-pasos">
-          <li><code>cd wansoft-scraper</code></li>
-          <li><code>npm install</code> y <code>npx playwright install chromium</code></li>
-          <li><code>HEADFUL=1 node scrape.mjs --month {(/^\d{4}-\d{2}$/.test(mes) ? mes : "2026-08")}</code> → entra, resuelve el captcha; se carga el mes completo.</li>
-          <li>Listo. Las siguientes corridas (botón o cron) ya no piden captcha hasta que la sesión caduque.</li>
-        </ol>
+        <strong>Primera vez o sesión caducada:</strong> abre Wansoft con el botón siguiente, inicia sesión y pega aquí
+        su cookie. Después el servidor podrá completar los días faltantes y continuar automáticamente.
       </div>
 
       <div className="ws-panel">
-        <div className="ws-panel__head"><div><div className="ws-panel__titulo">Sincronizar ahora</div><div className="ws-panel__sub">Recorre el rango día por día, todas las sucursales.</div></div></div>
+        <div className="ws-panel__head">
+          <div><div className="ws-panel__titulo">Abrir reporte de Wansoft</div><div className="ws-panel__sub">Se abre en otra pestaña para iniciar sesión o revisar los reportes originales.</div></div>
+          <a className="btn btn--fantasma" href={wansoftReporteUrl} target="_blank" rel="noopener noreferrer">Abrir Wansoft ↗</a>
+        </div>
+        <div className="ws-nota ws-nota--info" style={{ marginTop: "0.8rem" }}>
+          Después de iniciar sesión: abre <strong>F12 → Network</strong>, recarga el reporte, selecciona una petición,
+          y copia el valor completo de <strong>Request Headers → Cookie</strong>.
+        </div>
+        <div className="ws-filtros" style={{ marginTop: "0.8rem", alignItems: "flex-end" }}>
+          <label className="campo" style={{ flex: "1 1 420px" }}>
+            <span>Cookie de sesión</span>
+            <input type="password" autoComplete="off" value={cookieWansoft} onChange={(e) => setCookieWansoft(e.target.value)} placeholder="Pega aquí el valor de Cookie" />
+          </label>
+          <button className="btn btn--negro" type="button" disabled={guardandoCookie || !cookieWansoft.trim()} onClick={guardarCookie} style={{ height: 42 }}>
+            {guardandoCookie ? "Guardando…" : "Guardar sesión"}
+          </button>
+        </div>
+      </div>
+
+      <div className="ws-panel">
+        <div className="ws-panel__head"><div><div className="ws-panel__titulo">Completar datos del rango</div><div className="ws-panel__sub">Puede revisar todo el rango o consultar solamente los días incompletos.</div></div></div>
         {!disponible && <div className="ws-nota ws-nota--warn" style={{ marginBottom: "1rem" }}>No se encontró la carpeta <code>wansoft-scraper/</code> o no está instalada.</div>}
         <div className="ws-filtros">
           <label className="campo"><span>Desde</span><input type="date" value={rango.desde} onChange={(e) => setRango((r) => ({ ...r, desde: e.target.value }))} /></label>
           <label className="campo"><span>Hasta</span><input type="date" value={rango.hasta} onChange={(e) => setRango((r) => ({ ...r, hasta: e.target.value }))} /></label>
-          <button className="btn btn--negro" onClick={sincronizar} disabled={ocupado} type="button" style={{ height: 42 }}>
+          <button className="btn btn--negro" onClick={() => sincronizar(true)} disabled={ocupado} type="button" style={{ height: 42 }}>
+            {ocupado ? "Sincronizando…" : "Completar días faltantes"}
+          </button>
+          <button className="btn btn--fantasma" onClick={() => sincronizar(false)} disabled={ocupado} type="button" style={{ height: 42 }}>
             {ocupado ? "Sincronizando…" : "▶ Sincronizar ahora"}
           </button>
         </div>
@@ -1049,19 +1104,22 @@ function ConexionView({ mes, onToast, onHecho }: { sucursales: any[]; mes: strin
         {resultado && (
           <div className={`ws-nota ${resultado.ok ? "ws-nota--ok" : "ws-nota--warn"}`} style={{ marginTop: "1rem" }}>
             {resultado.ok
-              ? `✔ Listo. ${resultado.summary?.filas ?? 0} filas · ${resultado.summary?.dias ?? 0} días · ${resultado.summary?.sucursales ?? 0} sucursales.`
+              ? resultado.sinCambios
+                ? "✔ No hay días faltantes en el rango seleccionado."
+                : `✔ Listo. ${resultado.summary?.filas ?? 0} filas · ${resultado.summary?.dias ?? 0} días${resultado.pendientes ? " faltantes detectados" : ""} · ${resultado.summary?.sucursales ?? 0} sucursales.`
               : <>⚠ {resultado.error}{resultado.detalle ? <><br /><code style={{ fontSize: "0.75rem", whiteSpace: "pre-wrap" }}>{resultado.detalle}</code></> : null}</>}
           </div>
         )}
       </div>
 
       <div className="ws-panel">
-        <div className="ws-panel__head"><div><div className="ws-panel__titulo">Programar cada hora (cron)</div></div></div>
+        <div className="ws-panel__head"><div><div className="ws-panel__titulo">Programación del servidor</div></div></div>
         <div className="ws-nota ws-nota--info">
-          En el servidor (Linux), agrega a <code>crontab -e</code>:
+          No requiere configurar <code>cron</code>. Se inicia junto con Next.js y tiene bloqueo distribuido para evitar
+          duplicados si el botón o más de una instancia intentan sincronizar al mismo tiempo.
           <ol className="ws-pasos">
-            <li><code>0 * * * * cd /ruta/pollos-medina-page/wansoft-scraper && /usr/bin/node scrape.mjs &gt;&gt; sync.log 2&gt;&amp;1</code> — cada hora, el día en curso.</li>
-            <li><code>30 0 * * * cd /ruta/.../wansoft-scraper && /usr/bin/node scrape.mjs --yesterday</code> — cierre del día anterior.</li>
+            <li><code>WANSOFT_AUTO_SYNC=1</code> — activa la programación (valor predeterminado).</li>
+            <li><code>WANSOFT_AUTO_SYNC=0</code> — la desactiva para una instancia concreta.</li>
           </ol>
         </div>
       </div>
