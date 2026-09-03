@@ -18,6 +18,8 @@ const nombreMes = (mes: string) => {
   return `${meses[m - 1]} ${a}`;
 };
 const diaCorto = (fecha: string) => (fecha ? fecha.slice(8, 10) : "");
+const diaSemana = (fecha: string) =>
+  fecha ? new Date(fecha + "T00:00:00").toLocaleDateString("es-MX", { weekday: "short" }).replace(".", "") : "";
 
 interface Props {
   onToast: (msg: string) => void;
@@ -665,7 +667,12 @@ function LineaArea({ serie }: { serie: any[] }) {
       <path className="area" d={area} />
       <path className="linea" d={linea} />
       {puntos.map((p, i) => (i % paso === 0 || i === n - 1 ? <circle key={i} className="punto" cx={p[0]} cy={p[1]} r={2.5} /> : null))}
-      {serie.map((d, i) => (i % paso === 0 || i === n - 1 ? <text key={i} className="eje-txt" x={x(i)} y={H - P + 14} textAnchor="middle">{diaCorto(d.fecha)}</text> : null))}
+      {serie.map((d, i) => (i % paso === 0 || i === n - 1 ? (
+        <text key={i} className="eje-txt" x={x(i)} y={H - P + 12} textAnchor="middle">
+          <tspan x={x(i)}>{diaSemana(d.fecha)}</tspan>
+          <tspan x={x(i)} dy="10">{diaCorto(d.fecha)}</tspan>
+        </text>
+      ) : null))}
     </svg>
   );
 }
