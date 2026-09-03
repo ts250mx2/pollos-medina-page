@@ -674,3 +674,8 @@ h1, h2, h3 { font-family: var(--font-titulo); font-weight: 400; text-transform: 
 .ws-heat td:hover { transform: scale(1.12); outline: 2px solid var(--negro); position: relative; z-index: 1; }
 .ws-heat-leyenda { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.8rem; font-size: 0.75rem; color: var(--gris); }
 .ws-heat-grad { flex: 1; max-width: 220px; height: 10px; border-radius: 999px; background: linear-gradient(90deg, #fff0c8, #ffc20e, #e4022a); }
+
+/* ---------- Zoom de la gráfica de ventas por día ---------- */
+.ws-chart-zoom { display: flex; flex-direction: column; }
+.ws-chart-ctrl { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.ws-chart-hint { margin-right: auto; font-size: 0.78rem; color: var(--gris); }

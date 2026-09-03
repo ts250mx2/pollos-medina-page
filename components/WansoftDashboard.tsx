@@ -237,7 +237,7 @@ function ResumenView({ data, t, rango, onDetalle }: { data: any; t: any; rango: 
               <div className="ws-panel__sub">{rango.etiqueta}{data?.mejorDia ? ` · Mejor día: ${data.mejorDia.fecha} (${money(data.mejorDia.venta_neta)})` : ""}</div>
             </div>
           </div>
-          <LineaArea serie={serie} />
+          <LineaArea serie={serie} zoomable />
         </div>
 
         <ReporteBarras titulo="Ventas por tipo de orden" items={data.tiposOrden} tipo="dinero" extra="cuentas" vistaInicial="pastel" />
@@ -631,23 +631,71 @@ function Kpi({ label, valor, pie, color, delta, deltaTexto }: { label: string; v
 }
 
 // Gráfica de área + línea en SVG puro
-function LineaArea({ serie }: { serie: any[] }) {
+function LineaArea({ serie, zoomable = false }: { serie: any[]; zoomable?: boolean }) {
   const W = 640, H = 240, P = 30;
-  if (!serie.length) return <p className="ws-vacio">Sin datos diarios.</p>;
-  const valores = serie.map((d) => d.venta_neta);
-  const maxV = Math.max(...valores, 1);
   const n = serie.length;
-  const x = (i: number) => P + (n === 1 ? (W - 2 * P) / 2 : (i * (W - 2 * P)) / (n - 1));
+  const svgRef = React.useRef<SVGSVGElement>(null);
+  const arrastre = React.useRef<{ x: number; a: number; b: number } | null>(null);
+  const [win, setWin] = useState<{ a: number; b: number } | null>(null);
+
+  if (!n) return <p className="ws-vacio">Sin datos diarios.</p>;
+
+  const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+
+  // Ventana visible (índices inclusivos). Sin zoom = toda la serie.
+  const a = win ? clamp(win.a, 0, n - 1) : 0;
+  const b = win ? clamp(win.b, a, n - 1) : n - 1;
+  const vis = serie.slice(a, b + 1);
+  const m = vis.length;
+
+  const valores = vis.map((d) => d.venta_neta);
+  const maxV = Math.max(...valores, 1);
+  const x = (i: number) => P + (m === 1 ? (W - 2 * P) / 2 : (i * (W - 2 * P)) / (m - 1));
   const y = (v: number) => H - P - (v / maxV) * (H - 2 * P);
 
-  const puntos = serie.map((d, i) => [x(i), y(d.venta_neta)]);
+  const puntos = vis.map((d, i) => [x(i), y(d.venta_neta)]);
   const linea = puntos.map((p, i) => `${i === 0 ? "M" : "L"}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" ");
-  const area = `${linea} L${x(n - 1).toFixed(1)},${H - P} L${x(0).toFixed(1)},${H - P} Z`;
+  const area = `${linea} L${x(m - 1).toFixed(1)},${H - P} L${x(0).toFixed(1)},${H - P} Z`;
   const gridVals = [0, 0.25, 0.5, 0.75, 1];
-  const paso = Math.max(1, Math.floor(n / 12));
+  const paso = Math.max(1, Math.floor(m / 12));
 
-  return (
-    <svg className="ws-chart" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" role="img" aria-label="Venta neta por día">
+  const aplicarZoom = (factor: number, frac: number) => {
+    if (n < 3) return;
+    const span = b - a;
+    const idx = a + frac * span;
+    const nspan = clamp(Math.round(span * factor), 2, n - 1);
+    const na = clamp(Math.round(idx - frac * nspan), 0, n - 1 - nspan);
+    const nb = na + nspan;
+    setWin(na === 0 && nb === n - 1 ? null : { a: na, b: nb });
+  };
+  const onWheel = (e: React.WheelEvent<SVGSVGElement>) => {
+    if (!zoomable) return;
+    e.preventDefault();
+    const rect = svgRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    aplicarZoom(e.deltaY < 0 ? 0.8 : 1.25, clamp((e.clientX - rect.left) / rect.width, 0, 1));
+  };
+  const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (!zoomable || !win) return; // desplazar solo con zoom activo
+    arrastre.current = { x: e.clientX, a, b };
+    (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
+  };
+  const onPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (!zoomable || !arrastre.current) return;
+    const rect = svgRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const span = arrastre.current.b - arrastre.current.a;
+    const dfrac = (e.clientX - arrastre.current.x) / rect.width;
+    const na = clamp(Math.round(arrastre.current.a - dfrac * span), 0, n - 1 - span);
+    setWin({ a: na, b: na + span });
+  };
+  const onPointerUp = () => { arrastre.current = null; };
+
+  const svg = (
+    <svg ref={svgRef} className="ws-chart" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet"
+      role="img" aria-label="Venta neta por día"
+      onWheel={onWheel} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerLeave={onPointerUp}
+      style={zoomable ? { touchAction: "none", cursor: win ? "grab" : "default" } : undefined}>
       <defs>
         <linearGradient id="wsArea" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#e4022a" stopOpacity="0.28" />
@@ -666,14 +714,30 @@ function LineaArea({ serie }: { serie: any[] }) {
       })}
       <path className="area" d={area} />
       <path className="linea" d={linea} />
-      {puntos.map((p, i) => (i % paso === 0 || i === n - 1 ? <circle key={i} className="punto" cx={p[0]} cy={p[1]} r={2.5} /> : null))}
-      {serie.map((d, i) => (i % paso === 0 || i === n - 1 ? (
+      {puntos.map((p, i) => (i % paso === 0 || i === m - 1 ? <circle key={i} className="punto" cx={p[0]} cy={p[1]} r={2.5} /> : null))}
+      {vis.map((d, i) => (i % paso === 0 || i === m - 1 ? (
         <text key={i} className="eje-txt" x={x(i)} y={H - P + 12} textAnchor="middle">
           <tspan x={x(i)}>{diaSemana(d.fecha)}</tspan>
           <tspan x={x(i)} dy="10">{diaCorto(d.fecha)}</tspan>
         </text>
       ) : null))}
     </svg>
+  );
+
+  if (!zoomable) return svg;
+
+  return (
+    <div className="ws-chart-zoom">
+      <div className="ws-chart-ctrl">
+        <span className="ws-chart-hint">
+          {win ? `${fechaCorta(vis[0].fecha)} – ${fechaCorta(vis[m - 1].fecha)} · rueda o arrastra` : "Rueda del mouse para acercar"}
+        </span>
+        <button type="button" className="btn btn--fantasma btn--sm" onClick={() => aplicarZoom(0.7, 0.5)} aria-label="Acercar">＋</button>
+        <button type="button" className="btn btn--fantasma btn--sm" onClick={() => aplicarZoom(1.4, 0.5)} aria-label="Alejar">－</button>
+        <button type="button" className="btn btn--fantasma btn--sm" onClick={() => setWin(null)} disabled={!win}>Reset</button>
+      </div>
+      {svg}
+    </div>
   );
 }
 
