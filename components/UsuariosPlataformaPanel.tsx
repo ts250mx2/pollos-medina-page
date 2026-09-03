@@ -8,7 +8,7 @@ import RegistroModal from "@/components/RegistroModal";
 // Catálogo global de usuarios de plataforma (grid + modal de alta/edición).
 
 interface SucursalRef { id: number; nombre: string }
-const PLATAFORMAS = ["Wansoft", "Bonsaif", "Didi", "Rappi", "Uber Eats"];
+const PLATAFORMAS = ["Wansoft", "Bonsaif", "Didi", "Rappi", "Uber Eats", "Clip", "Mercado Pago", "Spin"];
 const TIPOS = ["Usuario", "Administrador"];
 const CAMPOS = ["nombre", "plataforma", "usuario", "password", "tipo_usuario", "sucursal_id", "url"] as const;
 
