@@ -74,6 +74,8 @@ async function migrar({ forzar }) {
     await asegurarColumna(conexion, "wansoft_sucursales", "alias", "VARCHAR(160) NULL AFTER nombre");
     await asegurarColumna(conexion, "terminales", "notas", "VARCHAR(500) NULL AFTER cuenta");
     await asegurarColumna(conexion, "usuarios_plataforma", "nombre", "VARCHAR(160) NULL AFTER id");
+    await asegurarColumna(conexion, "pedidos", "envio", "DECIMAL(10,2) NOT NULL DEFAULT 0 AFTER subtotal");
+    await asegurarColumna(conexion, "pedidos", "forma_pago", "VARCHAR(40) NULL AFTER total");
 
     const [tablas] = await conexion.query("SHOW TABLES");
     console.log(`\n✅ Listo. La base tiene ${tablas.length} tablas.`);

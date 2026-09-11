@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import WansoftDashboard from "@/components/WansoftDashboard";
 import TerminalesPanel from "@/components/TerminalesPanel";
 import UsuariosPlataformaPanel from "@/components/UsuariosPlataformaPanel";
+import EnvioConfigPanel from "@/components/EnvioConfigPanel";
 import "./admin.css";
 
 const formatDinero = (val: number) => {
@@ -1015,6 +1016,9 @@ export default function AdminPage() {
                 );
               })}
             </form>
+            <div style={{ marginTop: "1.6rem" }}>
+              <EnvioConfigPanel onToast={triggerToast} />
+            </div>
           </section>
         )}
 

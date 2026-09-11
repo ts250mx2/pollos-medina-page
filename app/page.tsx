@@ -3,6 +3,7 @@ import { menuCompleto } from "@/lib/services/menu";
 import { paraSitio as getSucursales } from "@/lib/services/sucursales";
 import { paraSitio as getDestacados } from "@/lib/services/destacados";
 import SitioCliente from "@/components/SitioCliente";
+import Pollito from "@/components/Pollito";
 
 export const revalidate = 60; // Revalidar cada 60 segundos (ISR)
 
@@ -35,5 +36,10 @@ export default async function Home() {
     destacados,
   };
 
-  return <SitioCliente datos={data} />;
+  return (
+    <>
+      <SitioCliente datos={data} />
+      <Pollito />
+    </>
+  );
 }

@@ -151,6 +151,44 @@ CREATE TABLE IF NOT EXISTS usuarios_plataforma (
     REFERENCES sucursales (id) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ---------- Pedidos (tomados por el agente Pollito) ----------
+CREATE TABLE IF NOT EXISTS pedidos (
+  id               INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  folio            VARCHAR(20)  NOT NULL,
+  cliente_nombre   VARCHAR(160) NOT NULL,
+  cliente_telefono VARCHAR(40)  NULL,
+  tipo             ENUM('domicilio','recoger') NOT NULL DEFAULT 'recoger',
+  direccion        VARCHAR(400) NULL,
+  sucursal_id      INT UNSIGNED NULL,
+  items            JSON         NOT NULL,        -- [{producto, cantidad, precio_unitario, opciones, notas}]
+  subtotal         DECIMAL(10,2) NOT NULL DEFAULT 0,
+  envio            DECIMAL(10,2) NOT NULL DEFAULT 0,
+  total            DECIMAL(10,2) NOT NULL DEFAULT 0,
+  forma_pago       VARCHAR(40)  NULL,          -- efectivo, tarjeta, transferencia
+  notas            VARCHAR(600) NULL,
+  estado           ENUM('nuevo','preparando','listo','entregado','cancelado') NOT NULL DEFAULT 'nuevo',
+  origen           VARCHAR(20)  NOT NULL DEFAULT 'pollito',
+  creado_en        TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  actualizado_en   TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_pedidos_folio (folio),
+  KEY ix_pedidos_estado (estado),
+  KEY ix_pedidos_creado (creado_en),
+  CONSTRAINT fk_pedidos_sucursal FOREIGN KEY (sucursal_id)
+    REFERENCES sucursales (id) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------- Configuración del envío a domicilio (global, una sola fila) ----------
+-- zonas = [{ hasta_km, precio }] ordenadas; cobertura_km = tope de reparto.
+CREATE TABLE IF NOT EXISTS config_envio (
+  id             TINYINT UNSIGNED NOT NULL DEFAULT 1,
+  activo         TINYINT(1)   NOT NULL DEFAULT 1,
+  cobertura_km   DECIMAL(6,2) NOT NULL DEFAULT 8.00,
+  zonas          JSON         NOT NULL,
+  actualizado_en TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ---------- Destacados de la portada (foto principal + promos) ----------
 -- seccion = 'hero'  → producto que se muestra en la foto principal (uno solo)
 -- seccion = 'promo' → productos de "Promociones de la semana" (varios, en orden)
