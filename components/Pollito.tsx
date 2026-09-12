@@ -56,7 +56,14 @@ function PoyitoMascota({ compacta = false }: { compacta?: boolean }) {
   );
 }
 
-export default function Pollito() {
+interface PollitoProps {
+  /** Se llama cuando poyito registra un pedido (para refrescar el mostrador). */
+  onPedido?: (folio: string) => void;
+  /** Texto del botón flotante (por defecto, el del sitio público). */
+  etiquetaFab?: string;
+}
+
+export default function Pollito({ onPedido, etiquetaFab }: PollitoProps = {}) {
   const [abierto, setAbierto] = useState(false);
   const [maximizado, setMaximizado] = useState(false);
   const [mensajes, setMensajes] = useState<Mensaje[]>([SALUDO]);
@@ -104,7 +111,7 @@ export default function Pollito() {
       const d = await res.json();
       if (d.ok) {
         setMensajes((prev) => [...prev, { role: "assistant", content: d.reply, tarjetas: d.tarjetas || [] }]);
-        if (d.pedido?.folio) setFolio(d.pedido.folio);
+        if (d.pedido?.folio) { setFolio(d.pedido.folio); onPedido?.(d.pedido.folio); }
       } else {
         setMensajes((prev) => [...prev, { role: "assistant", content: d.error || "Uy, algo falló. Intenta de nuevo." }]);
       }
@@ -151,7 +158,7 @@ export default function Pollito() {
       {!abierto && (
         <button className="pollito-fab" type="button" onClick={() => setAbierto(true)} aria-label="Pedir con poyito">
           <PoyitoMascota />
-          <span className="pollito-fab__txt"><small>¿Hambre?</small>Pide con poyito</span>
+          <span className="pollito-fab__txt">{etiquetaFab ? etiquetaFab : (<><small>¿Hambre?</small>Pide con poyito</>)}</span>
           <span className="pollito-fab__burbuja">¡Hola!</span>
         </button>
       )}

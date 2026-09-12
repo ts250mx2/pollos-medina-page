@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Pollito from "@/components/Pollito";
 
 interface Item { producto: string; cantidad: number; precio_unitario: number; opciones?: string | null; notas?: string | null }
 interface Pedido {
@@ -141,6 +142,8 @@ export default function PedidosGestion() {
           );
         })}
       </div>
+
+      <Pollito onPedido={() => cargar()} etiquetaFab="Tomar pedido con Poyito" />
     </div>
   );
 }

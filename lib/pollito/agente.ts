@@ -108,9 +108,13 @@ const TOOLS_BASE: HerramientaBase[] = [
   },
 ];
 
-const TOOLS_OPENAI: OpenAI.Chat.Completions.ChatCompletionTool[] = TOOLS_BASE.map((t) => ({
+// Responses API: las function tools van planas (name/parameters al nivel del item).
+const TOOLS_OPENAI: OpenAI.Responses.FunctionTool[] = TOOLS_BASE.map((t) => ({
   type: "function",
-  function: { name: t.name, description: t.description, parameters: t.schema },
+  name: t.name,
+  description: t.description,
+  parameters: t.schema,
+  strict: false,
 }));
 
 const TOOLS_CLAUDE: Anthropic.Tool[] = TOOLS_BASE.map((t) => ({
@@ -225,40 +229,43 @@ export async function correrPollito(mensajes: MensajeVisible[]): Promise<TurnoPo
   throw new HlClienteError(`HL asignó a poyito el proveedor "${cred.proveedor}", que este agente no sabe correr (solo claude u openai).`);
 }
 
-// ---------- OpenAI (chat.completions + function tools) ----------
+// ---------- OpenAI (Responses API + function tools) ----------
+// Se usa /v1/responses y no chat/completions: los modelos con razonamiento (gpt-5.x)
+// solo aceptan herramientas junto con razonamiento en este endpoint. Se corre sin
+// almacenar la conversacion en OpenAI (store: false); el razonamiento cifrado se
+// pide de vuelta para poder reenviarlo entre pasos del mismo turno.
 async function loopOpenAI(modelo: string, llave: string, visibles: MensajeVisible[]): Promise<TurnoPollito> {
   const client = new OpenAI({ apiKey: llave });
-  const msgs: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
-    { role: "system", content: SISTEMA },
-    ...visibles.map((m) => ({ role: m.role, content: m.content })),
-  ];
+  const input: OpenAI.Responses.ResponseInputItem[] = visibles.map((m) => ({ role: m.role, content: m.content }));
   const acc: Acumulador = { pedido: null, tarjetas: [] };
 
   for (let paso = 0; paso < MAX_PASOS; paso++) {
-    const res = await client.chat.completions.create({
+    const res = await client.responses.create({
       model: modelo,
-      max_completion_tokens: 1500,
-      messages: msgs,
+      instructions: SISTEMA,
+      input,
       tools: TOOLS_OPENAI,
       tool_choice: "auto",
+      max_output_tokens: 1500,
+      store: false,
+      include: ["reasoning.encrypted_content"],
     });
-    const msg = res.choices[0]?.message;
-    if (!msg) break;
-    msgs.push(msg as OpenAI.Chat.Completions.ChatCompletionMessageParam);
+    // Todo lo que produjo el modelo (mensajes, llamadas y razonamiento) vuelve como contexto del siguiente paso.
+    input.push(...(res.output as OpenAI.Responses.ResponseInputItem[]));
 
-    const toolCalls = msg.tool_calls || [];
-    if (toolCalls.length > 0) {
-      for (const tc of toolCalls) {
-        if (tc.type !== "function") continue;
+    const llamadas = res.output.filter((o): o is OpenAI.Responses.ResponseFunctionToolCall => o.type === "function_call");
+    if (llamadas.length > 0) {
+      for (const tc of llamadas) {
         let args: any = {};
-        try { args = JSON.parse(tc.function.arguments || "{}"); } catch { /* argumentos vacíos */ }
-        const out = await ejecutarTool(tc.function.name, args);
+        try { args = JSON.parse(tc.arguments || "{}"); } catch { /* argumentos vacíos */ }
+        const out = await ejecutarTool(tc.name, args);
         aplicarResultado(acc, out);
-        msgs.push({ role: "tool", tool_call_id: tc.id, content: out.text });
+        input.push({ type: "function_call_output", call_id: tc.call_id, output: out.text });
       }
       continue;
     }
-    const reply = (msg.content || "").trim();
+
+    const reply = (res.output_text || "").trim();
     return { reply: reply || "¿Me repites, porfa?", pedido: acc.pedido, tarjetas: acc.tarjetas };
   }
   return { reply: "Uy, me enredé tantito. ¿Me repites tu pedido?", pedido: acc.pedido, tarjetas: acc.tarjetas };
