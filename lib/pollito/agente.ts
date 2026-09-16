@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
-import { obtenerLlave, HlClienteError } from "../hl-cliente";
+import { obtenerLlave, HlClienteError, type ApiIA } from "../hl-cliente";
 import { menuCompleto } from "../services/menu";
 import { paraSitio as sucursalesParaSitio } from "../services/sucursales";
 import { crearPedido, type Pedido } from "../services/pedidos";
@@ -217,16 +217,29 @@ function aplicarResultado(acc: Acumulador, out: ResultadoTool) {
  * proveedor asignado corre Claude u OpenAI, con el mismo juego de herramientas.
  * `mensajes` es el historial visible (user/assistant, texto).
  */
+/** Proveedores que hablan el API de OpenAI: se corren con el SDK de OpenAI apuntando a su baseURL. */
+const COMPATIBLES_OPENAI = new Set(["openai", "deepseek", "groq", "mistral", "xai", "openrouter", "kimi", "qwen", "glm"]);
+
+/** Con qué SDK se corre el proveedor: manda el campo `api` de HL; sin él, se deduce del nombre. */
+function sdkPara(proveedor: string, api?: ApiIA | null): "claude" | "openai" | null {
+  if (api === "anthropic") return "claude";
+  if (api === "openai") return "openai";
+  if (api) return null;
+  const limpio = proveedor.trim().toLowerCase();
+  if (limpio === "claude") return "claude";
+  return COMPATIBLES_OPENAI.has(limpio) ? "openai" : null;
+}
+
 export async function correrPollito(mensajes: MensajeVisible[]): Promise<TurnoPollito> {
   const cred = await obtenerLlave("poyito");
-  const proveedor = cred.proveedor.trim().toLowerCase();
   const visibles = mensajes.filter(
     (m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.trim()
   );
 
-  if (proveedor === "openai") return loopOpenAI(cred.modelo, cred.llave, visibles);
-  if (proveedor === "claude") return loopClaude(cred.modelo, cred.llave, visibles);
-  throw new HlClienteError(`HL asignó a poyito el proveedor "${cred.proveedor}", que este agente no sabe correr (solo claude u openai).`);
+  const sdk = sdkPara(cred.proveedor, cred.api);
+  if (sdk === "openai") return loopOpenAI(cred.modelo, cred.llave, visibles);
+  if (sdk === "claude") return loopClaude(cred.modelo, cred.llave, visibles);
+  throw new HlClienteError(`HL asignó a poyito el proveedor "${cred.proveedor}", que este agente no sabe correr (solo los que hablan el API de Anthropic o de OpenAI).`);
 }
 
 // ---------- OpenAI (Responses API + function tools) ----------

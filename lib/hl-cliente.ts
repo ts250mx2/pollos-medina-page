@@ -34,10 +34,15 @@ export function hlConfigurado(agente: AgenteHl, env: EntornoHl = process.env): b
   return (env.HL_URL ?? "").trim() !== "" && (env.HL_API_KEY ?? "").trim() !== "" && agenteConfigurado(agente, env);
 }
 
+/** Con qué SDK se habla el proveedor, según HL. */
+export type ApiIA = "anthropic" | "openai" | "gemini";
+
 export interface LlaveIA {
   uuid: string;
   agente: string;
   proveedor: "claude" | "openai" | "gemini" | "otro" | string;
+  /** API (SDK) que habla el proveedor; HL lo manda desde 2026-09. Sin él se deduce por el nombre. */
+  api?: ApiIA | null;
   modelo: string;
   llave: string;
   caducidad: string | null;
@@ -104,6 +109,7 @@ function validarLlave(data: unknown): LlaveIA | null {
     uuid: typeof d.uuid === "string" ? d.uuid : "",
     agente: typeof d.agente === "string" ? d.agente : "",
     proveedor: d.proveedor.trim().toLowerCase(),
+    api: d.api === "anthropic" || d.api === "openai" || d.api === "gemini" ? d.api : undefined,
     modelo: d.modelo.trim(),
     llave: d.llave.trim(),
     caducidad: typeof d.caducidad === "string" ? d.caducidad : null,
