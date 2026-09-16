@@ -50,8 +50,8 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { reply, pedido, tarjetas } = await correrPollito(mensajes);
-    return NextResponse.json({ ok: true, reply, pedido, tarjetas });
+    const { reply, pedido, tarjetas, ia } = await correrPollito(mensajes);
+    return NextResponse.json({ ok: true, reply, pedido, tarjetas, ia });
   } catch (e: any) {
     console.error("Pollito error:", e?.message || e);
     return NextResponse.json({ ok: false, error: "El asistente tuvo un problema. Intenta de nuevo." }, { status: 500 });

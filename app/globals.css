@@ -1502,6 +1502,7 @@ p { text-wrap: pretty; }
   line-height: 1.42; white-space: pre-wrap; word-break: break-word; }
 .pollito-msg--assistant { background: #fff; border: 1.5px solid #dfd2b8; border-bottom-left-radius: 5px; box-shadow: 0 3px 0 rgba(32,24,18,.08); }
 .pollito-msg--user { background: #201812; color: #fffaf0; border-bottom-right-radius: 5px; box-shadow: 0 3px 0 #d8a80c; }
+.pollito-ia { font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace; font-size: 0.64rem; color: #9a8c74; margin: 0.15rem 0 0 0.45rem; letter-spacing: 0.02em; }
 .pollito-msg--cargando { display: inline-flex; gap: 4px; align-items: center; }
 .pollito-msg--cargando span { width: 7px; height: 7px; border-radius: 50%; background: var(--gris); opacity: 0.5;
   animation: pollitoDot 1s infinite ease-in-out; }

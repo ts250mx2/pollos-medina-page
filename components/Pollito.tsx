@@ -1,59 +1,49 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { PoyitoMascota, type EstadoPoyito } from "./pollito/PoyitoMascota";
+import { useVoz } from "./pollito/useVoz";
+import { useRevelado } from "./pollito/useRevelado";
+import { BarraCarrito, type ItemCarrito } from "./pollito/BarraCarrito";
+import "./pollito/pollito.css";
 
 // ============================================================
-//  "Pollito": chat de ventas flotante (habla con /api/pollito).
-//  Muestra productos con foto, sugiere complementos y calcula el
-//  envío a domicilio desde la ubicación del cliente.
+//  "poyito": chat de ventas flotante (habla con /api/pollito).
+//  Fase 1 "agente vivo":
+//   - La mascota REACCIONA al chat (piensa, habla con el pico sincronizado,
+//     señala las tarjetas, celebra el pedido).
+//   - Habla en voz alta (Web Speech) con botón de silencio.
+//   - Carrito visible con total: "Agregar" es instantáneo (sin esperar al
+//     modelo) y "Pedir ahora" le pasa todo al agente para cerrar.
+//   - Promos del día al abrir.
 // ============================================================
 
-interface Tarjeta { nombre: string; precio: number; img: string | null; desc?: string | null }
-interface Mensaje { role: "user" | "assistant"; content: string; display?: string; tarjetas?: Tarjeta[] }
+interface Tarjeta { nombre: string; precio: number; img: string | null; desc?: string | null; etiqueta?: string | null }
+interface IAUsada { proveedor: string; modelo: string }
+interface Mensaje { role: "user" | "assistant"; content: string; display?: string; tarjetas?: Tarjeta[]; ia?: IAUsada }
 
-const CLAVE = "pollito.msgs.v2";
+const NOMBRE_PROVEEDOR: Record<string, string> = { claude: "Claude", openai: "OpenAI", gemini: "Gemini", deepseek: "DeepSeek", groq: "Groq", mistral: "Mistral", xai: "xAI", openrouter: "OpenRouter", kimi: "Kimi", qwen: "Qwen", glm: "GLM" };
+const etiquetaIA = (ia: IAUsada) => `${NOMBRE_PROVEEDOR[ia.proveedor] ?? ia.proveedor} · ${ia.modelo}`;
+
+const CLAVE_MSGS = "pollito.msgs.v2";
+const CLAVE_CARRITO = "pollito.carrito.v1";
+const MS_CELEBRAR = 2600;
+const MS_SENALAR = 1500;
 const SALUDO: Mensaje = {
   role: "assistant",
   content: "¡Quiquiriquí! Soy poyito 🐥 de Pollo Medina. ¿Armamos algo rico para recoger o te lo llevamos?",
 };
 const money = (n: number) => `$${Number(n || 0).toFixed(0)}`;
 
-function PoyitoMascota({ compacta = false }: { compacta?: boolean }) {
-  return (
-    <span className={`poyito-mascota${compacta ? " poyito-mascota--compacta" : ""}`} aria-hidden="true">
-      <svg viewBox="0 0 160 150" role="img">
-        <defs>
-          <radialGradient id="poyitoBody" cx="32%" cy="22%" r="78%"><stop offset="0" stopColor="#fff7a8"/><stop offset=".42" stopColor="#ffd832"/><stop offset="1" stopColor="#e99c05"/></radialGradient>
-          <radialGradient id="poyitoHead" cx="34%" cy="25%" r="72%"><stop offset="0" stopColor="#fffbd0"/><stop offset=".38" stopColor="#ffe45d"/><stop offset="1" stopColor="#efad08"/></radialGradient>
-          <linearGradient id="poyitoWing" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#ffe96c"/><stop offset="1" stopColor="#e9a407"/></linearGradient>
-          <linearGradient id="poyitoBeak" x1="0" y1="0" x2="0" y2="1"><stop stopColor="#ffb637"/><stop offset="1" stopColor="#e96816"/></linearGradient>
-          <filter id="poyitoSoft" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="5" stdDeviation="4" floodColor="#6b3b00" floodOpacity=".28"/></filter>
-        </defs>
-        <ellipse className="poyito-mascota__sombra" cx="79" cy="137" rx="43" ry="8" />
-        <g className="poyito-mascota__grito"><path d="M126 27l12-11M132 39l17-2M116 20l3-15" /></g>
-        <g className="poyito-mascota__personaje" filter="url(#poyitoSoft)">
-          <g className="poyito-mascota__patas">
-            <path d="M61 120v13m-10 1 10-1 8 4M101 119v14m-9 3 9-3 9 2" />
-          </g>
-          <ellipse className="poyito-mascota__cuerpo" cx="80" cy="96" rx="45" ry="37" />
-          <path className="poyito-mascota__ala poyito-mascota__ala--izq" d="M45 78C25 70 15 84 23 103c5 12 18 13 30 2-7-7-9-16-8-27Z" />
-          <path className="poyito-mascota__ala poyito-mascota__ala--der" d="M114 78c20-8 30 7 21 25-5 10-15 12-27 3 7-9 8-18 6-28Z" />
-          <ellipse className="poyito-mascota__panza" cx="80" cy="105" rx="26" ry="20" />
-          <g className="poyito-mascota__cabeza">
-            <path className="poyito-mascota__cresta" d="M57 43c-10-15 6-24 16-12 2-18 23-18 25-1 12-10 28 5 16 18" />
-            <circle className="poyito-mascota__cara" cx="80" cy="62" r="39" />
-            <ellipse className="poyito-mascota__mejilla" cx="50" cy="72" rx="9" ry="5" />
-            <ellipse className="poyito-mascota__mejilla" cx="111" cy="72" rx="9" ry="5" />
-            <g className="poyito-mascota__ojo poyito-mascota__ojo--izq"><ellipse cx="64" cy="58" rx="8" ry="10"/><circle cx="61" cy="54" r="2.8"/></g>
-            <g className="poyito-mascota__ojo poyito-mascota__ojo--der"><ellipse cx="96" cy="58" rx="8" ry="10"/><circle cx="93" cy="54" r="2.8"/></g>
-            <path className="poyito-mascota__ceja" d="M55 43q9-6 17 0M89 42q9-5 17 2" />
-            <g className="poyito-mascota__pico"><path d="M70 68q10-11 21 0L80 78Z"/><path d="M71 69h19L80 84Z"/></g>
-          </g>
-          <path className="poyito-mascota__luz" d="M52 82c-8 9-8 22-2 29" />
-        </g>
-      </svg>
-    </span>
-  );
+function leerJSON<T>(clave: string, porDefecto: T): T {
+  try {
+    const g = localStorage.getItem(clave);
+    if (!g) return porDefecto;
+    const v = JSON.parse(g);
+    return (v ?? porDefecto) as T;
+  } catch {
+    return porDefecto;
+  }
 }
 
 interface PollitoProps {
@@ -71,19 +61,87 @@ export default function Pollito({ onPedido, etiquetaFab }: PollitoProps = {}) {
   const [enviando, setEnviando] = useState(false);
   const [ubicando, setUbicando] = useState(false);
   const [folio, setFolio] = useState<string | null>(null);
+  const [carrito, setCarrito] = useState<ItemCarrito[]>([]);
+  const [promos, setPromos] = useState<Tarjeta[]>([]);
+  const [cargado, setCargado] = useState(false);
+
+  // Estado de la mascota (derivado de lo que pasa en el chat).
+  const [celebrando, setCelebrando] = useState(false);
+  const [senalando, setSenalando] = useState(false);
+  const [reveladoIdx, setReveladoIdx] = useState<number | null>(null);
   const finRef = useRef<HTMLDivElement>(null);
 
+  const { soportada: vozSoportada, silenciada, hablando: hablandoVoz, hablar, callar, alternar } = useVoz();
+
+  // Texto que se está "escribiendo" (solo el último mensaje nuevo de poyito).
+  const objetivoRevelado = reveladoIdx !== null ? mensajes[reveladoIdx]?.content ?? null : null;
+  const { visible: textoRevelado, terminado: reveladoTerminado } = useRevelado(objetivoRevelado, {
+    onFin: () => {
+      const m = reveladoIdx !== null ? mensajes[reveladoIdx] : null;
+      if (m?.tarjetas?.length) setSenalando(true);
+    },
+  });
   useEffect(() => {
-    try {
-      const g = localStorage.getItem(CLAVE);
-      if (g) { const arr = JSON.parse(g); if (Array.isArray(arr) && arr.length) setMensajes(arr); }
-    } catch { /* sin persistencia */ }
-  }, []);
+    if (reveladoTerminado && reveladoIdx !== null) setReveladoIdx(null);
+  }, [reveladoTerminado, reveladoIdx]);
+
+  const hablandoTexto = reveladoIdx !== null && !reveladoTerminado;
+  const estado: EstadoPoyito = enviando
+    ? "pensando"
+    : celebrando
+      ? "celebrando"
+      : hablandoTexto || hablandoVoz
+        ? "hablando"
+        : senalando
+          ? "senalando"
+          : "idle";
 
   useEffect(() => {
-    try { localStorage.setItem(CLAVE, JSON.stringify(mensajes.slice(-40))); } catch { /* nada */ }
+    if (!celebrando) return;
+    const id = setTimeout(() => setCelebrando(false), MS_CELEBRAR);
+    return () => clearTimeout(id);
+  }, [celebrando]);
+  useEffect(() => {
+    if (!senalando) return;
+    const id = setTimeout(() => setSenalando(false), MS_SENALAR);
+    return () => clearTimeout(id);
+  }, [senalando]);
+
+  // Persistencia local (historial + carrito).
+  useEffect(() => {
+    const msgs = leerJSON<Mensaje[]>(CLAVE_MSGS, []);
+    if (Array.isArray(msgs) && msgs.length) setMensajes(msgs);
+    const c = leerJSON<ItemCarrito[]>(CLAVE_CARRITO, []);
+    if (Array.isArray(c)) setCarrito(c);
+    setCargado(true);
+  }, []);
+  useEffect(() => {
+    if (!cargado) return;
+    try { localStorage.setItem(CLAVE_MSGS, JSON.stringify(mensajes.slice(-40))); } catch { /* nada */ }
     finRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [mensajes, abierto, enviando]);
+  }, [mensajes, abierto, enviando, textoRevelado, cargado]);
+  useEffect(() => {
+    if (!cargado) return;
+    try { localStorage.setItem(CLAVE_CARRITO, JSON.stringify(carrito)); } catch { /* nada */ }
+  }, [carrito, cargado]);
+
+  // Promos del día (una sola vez) y saludo hablado al abrir una conversación nueva.
+  useEffect(() => {
+    if (!abierto) { callar(); return; }
+    if (promos.length === 0) {
+      fetch("/api/publico/sitio")
+        .then((r) => r.json())
+        .then((d) => {
+          const lista: Tarjeta[] = (d?.destacados?.promos || []).slice(0, 4).map((p: Tarjeta) => ({
+            nombre: p.nombre, precio: Number(p.precio), img: p.img || null, desc: p.desc || null, etiqueta: p.etiqueta || null,
+          }));
+          setPromos(lista);
+        })
+        .catch(() => { /* sin promos: no pasa nada */ });
+    }
+    if (mensajes.length === 1) hablar(SALUDO.content);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [abierto]);
 
   useEffect(() => {
     if (!abierto) return;
@@ -96,8 +154,10 @@ export default function Pollito({ onPedido, etiquetaFab }: PollitoProps = {}) {
     return () => window.removeEventListener("keydown", cerrarConEscape);
   }, [abierto, maximizado]);
 
-  const enviarContenido = async (content: string, display?: string) => {
+  const enviarContenido = useCallback(async (content: string, display?: string) => {
     if (!content.trim() || enviando) return;
+    callar();
+    setReveladoIdx(null);
     const nuevos: Mensaje[] = [...mensajes, { role: "user", content, display }];
     setMensajes(nuevos);
     setTexto("");
@@ -109,18 +169,45 @@ export default function Pollito({ onPedido, etiquetaFab }: PollitoProps = {}) {
         body: JSON.stringify({ mensajes: nuevos.map((m) => ({ role: m.role, content: m.content })) }),
       });
       const d = await res.json();
-      if (d.ok) {
-        setMensajes((prev) => [...prev, { role: "assistant", content: d.reply, tarjetas: d.tarjetas || [] }]);
-        if (d.pedido?.folio) { setFolio(d.pedido.folio); onPedido?.(d.pedido.folio); }
-      } else {
-        setMensajes((prev) => [...prev, { role: "assistant", content: d.error || "Uy, algo falló. Intenta de nuevo." }]);
+      const respuesta: Mensaje = d.ok
+        ? { role: "assistant", content: d.reply, tarjetas: d.tarjetas || [], ia: d.ia || undefined }
+        : { role: "assistant", content: d.error || "Uy, algo falló. Intenta de nuevo." };
+      const siguiente = [...nuevos, respuesta];
+      setMensajes(siguiente);
+      setReveladoIdx(siguiente.length - 1);
+      hablar(respuesta.content);
+      if (d.ok && d.pedido?.folio) {
+        setFolio(d.pedido.folio);
+        setCarrito([]);
+        setCelebrando(true);
+        onPedido?.(d.pedido.folio);
       }
     } catch {
       setMensajes((prev) => [...prev, { role: "assistant", content: "Sin conexión. Intenta de nuevo en un momento." }]);
     } finally {
       setEnviando(false);
     }
+  }, [enviando, mensajes, callar, hablar, onPedido]);
+
+  // ---- Carrito: agregar es instantáneo; "Pedir ahora" se lo pasa al agente ----
+  const agregar = (t: Tarjeta) => {
+    setCarrito((prev) => {
+      const i = prev.findIndex((x) => x.nombre === t.nombre);
+      if (i === -1) return [...prev, { nombre: t.nombre, precio: Number(t.precio), cant: 1 }];
+      return prev.map((x, k) => (k === i ? { ...x, cant: x.cant + 1 } : x));
+    });
   };
+  const quitarUno = (nombre: string) =>
+    setCarrito((prev) => prev.flatMap((x) => (x.nombre !== nombre ? [x] : x.cant > 1 ? [{ ...x, cant: x.cant - 1 }] : [])));
+  const masUno = (nombre: string) => setCarrito((prev) => prev.map((x) => (x.nombre === nombre ? { ...x, cant: x.cant + 1 } : x)));
+  const pedirCarrito = () => {
+    if (!carrito.length) return;
+    const lineas = carrito.map((i) => `${i.cant} x ${i.nombre}`).join(", ");
+    const total = carrito.reduce((s, i) => s + i.precio * i.cant, 0);
+    enviarContenido(`Quiero pedir: ${lineas}. (Total aprox. ${money(total)}.)`, `🛒 Quiero pedir: ${lineas}`);
+    setCarrito([]);
+  };
+  const cantidadEn = (nombre: string) => carrito.find((x) => x.nombre === nombre)?.cant ?? 0;
 
   const compartirUbicacion = () => {
     if (ubicando || enviando) return;
@@ -145,12 +232,51 @@ export default function Pollito({ onPedido, etiquetaFab }: PollitoProps = {}) {
   };
 
   const reiniciar = () => {
-    setMensajes([SALUDO]); setFolio(null);
-    try { localStorage.removeItem(CLAVE); } catch { /* nada */ }
+    callar();
+    setReveladoIdx(null);
+    setMensajes([SALUDO]);
+    setFolio(null);
+    setCarrito([]);
+    try { localStorage.removeItem(CLAVE_MSGS); localStorage.removeItem(CLAVE_CARRITO); } catch { /* nada */ }
   };
 
   const onKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); enviarContenido(texto); }
+  };
+
+  const renderTarjetas = (tarjetas: Tarjeta[], titulo?: string) => (
+    <div className="pollito-cards">
+      {titulo && <div className="pollito-cards__titulo">{titulo}</div>}
+      {tarjetas.map((t) => {
+        const n = cantidadEn(t.nombre);
+        return (
+          <div key={t.nombre} className={`pollito-card${n ? " pollito-card--en-carrito" : ""}`}>
+            <span className="pollito-card__img">{t.img ? <img src={t.img} alt={t.nombre} loading="lazy" /> : <span className="pollito-card__ph">🍗</span>}</span>
+            <span className="pollito-card__body">
+              <span className="pollito-card__nom">{t.nombre}{t.etiqueta ? <em className="pollito-card__tag">{t.etiqueta}</em> : null}</span>
+              <span className="pollito-card__precio">{money(t.precio)}</span>
+            </span>
+            {n ? (
+              <span className="pollito-card__qty">
+                <button type="button" onClick={() => quitarUno(t.nombre)} aria-label={`Quitar uno de ${t.nombre}`}>−</button>
+                <b>{n}</b>
+                <button type="button" onClick={() => agregar(t)} aria-label={`Agregar uno de ${t.nombre}`}>+</button>
+              </span>
+            ) : (
+              <button type="button" className="pollito-card__add" onClick={() => agregar(t)}>＋ Agregar</button>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  const estadoTexto: Record<EstadoPoyito, string> = {
+    idle: "En línea · listo para ayudarte",
+    pensando: "Pensando…",
+    hablando: "Hablando…",
+    senalando: "Mira estas opciones",
+    celebrando: "¡Pedido listo! 🎉",
   };
 
   return (
@@ -164,15 +290,20 @@ export default function Pollito({ onPedido, etiquetaFab }: PollitoProps = {}) {
       )}
 
       {abierto && (
-        <div className={`pollito${maximizado ? " pollito--maximizado" : ""}`} role="dialog" aria-label="poyito, asistente de pedidos">
+        <div className={`pollito${maximizado ? " pollito--maximizado" : ""}`} role="dialog" aria-label="poyito, asistente de pedidos" data-estado={estado}>
           <header className="pollito__head">
             <div className="pollito__id">
-              <span className="pollito__avatar"><PoyitoMascota compacta /></span>
-              <div><strong>poyito</strong><span><i /> En línea · listo para ayudarte</span></div>
+              <span className="pollito__avatar"><PoyitoMascota compacta estado={estado} /></span>
+              <div><strong>poyito</strong><span><i /> {estadoTexto[estado]}</span></div>
             </div>
             <div className="pollito__acc">
+              {vozSoportada && (
+                <button type="button" onClick={alternar} title={silenciada ? "Activar voz" : "Silenciar voz"} aria-label={silenciada ? "Activar voz de poyito" : "Silenciar voz de poyito"} aria-pressed={!silenciada}>
+                  {silenciada ? "🔇" : "🔊"}
+                </button>
+              )}
               <button type="button" onClick={reiniciar} title="Empezar de nuevo" aria-label="Reiniciar">↺</button>
-              <button type="button" onClick={() => setMaximizado((valor) => !valor)} title={maximizado ? "Restaurar tamaño" : "Maximizar"} aria-label={maximizado ? "Restaurar tamaño del chat" : "Maximizar chat"} aria-pressed={maximizado}>
+              <button type="button" onClick={() => setMaximizado((v) => !v)} title={maximizado ? "Restaurar tamaño" : "Maximizar"} aria-label={maximizado ? "Restaurar tamaño del chat" : "Maximizar chat"} aria-pressed={maximizado}>
                 {maximizado ? (
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3v5H3M16 3v5h5M8 21v-5H3M16 21v-5h5" /></svg>
                 ) : (
@@ -184,29 +315,24 @@ export default function Pollito({ onPedido, etiquetaFab }: PollitoProps = {}) {
           </header>
 
           <div className="pollito__hilo">
-            {mensajes.map((m, i) => (
-              <div key={i} className={`pollito-fila pollito-fila--${m.role}`}>
-                <div className={`pollito-msg pollito-msg--${m.role}`}>{m.display || m.content}</div>
-                {m.tarjetas && m.tarjetas.length > 0 && (
-                  <div className="pollito-cards">
-                    {m.tarjetas.map((t, j) => (
-                      <button key={j} className="pollito-card" type="button" onClick={() => enviarContenido(`Quiero ${t.nombre}`)}>
-                        <span className="pollito-card__img">{t.img ? <img src={t.img} alt={t.nombre} loading="lazy" /> : <span className="pollito-card__ph">🍗</span>}</span>
-                        <span className="pollito-card__body">
-                          <span className="pollito-card__nom">{t.nombre}</span>
-                          <span className="pollito-card__precio">{money(t.precio)}</span>
-                        </span>
-                        <span className="pollito-card__add">＋ Agregar</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
+            {mensajes.map((m, i) => {
+              const escribiendo = i === reveladoIdx;
+              const contenido = escribiendo ? textoRevelado : (m.display || m.content);
+              return (
+                <div key={i} className={`pollito-fila pollito-fila--${m.role}`}>
+                  <div className={`pollito-msg pollito-msg--${m.role}${escribiendo ? " pollito-msg--escribiendo" : ""}`}>{contenido}</div>
+                  {!escribiendo && m.ia && <div className="pollito-ia">{etiquetaIA(m.ia)}</div>}
+                  {i === 0 && mensajes.length === 1 && promos.length > 0 && renderTarjetas(promos, "🔥 Promos de hoy")}
+                  {!escribiendo && m.tarjetas && m.tarjetas.length > 0 && renderTarjetas(m.tarjetas)}
+                </div>
+              );
+            })}
             {enviando && <div className="pollito-msg pollito-msg--assistant pollito-msg--cargando"><span></span><span></span><span></span></div>}
             {folio && <div className="pollito-folio">✅ Pedido registrado · Folio <strong>{folio}</strong></div>}
             <div ref={finRef} />
           </div>
+
+          <BarraCarrito items={carrito} onMas={masUno} onMenos={quitarUno} onPedir={pedirCarrito} onVaciar={() => setCarrito([])} deshabilitado={enviando} />
 
           <div className="pollito__chips">
             <button type="button" onClick={() => enviarContenido("Es para recoger")} disabled={enviando}>🏪 Recoger</button>

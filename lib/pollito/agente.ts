@@ -198,6 +198,8 @@ async function ejecutarTool(nombre: string, input: any): Promise<ResultadoTool> 
 
 export interface TurnoPollito {
   reply: string;
+  /** Proveedor y modelo de IA que atendieron el turno (según HL Console). */
+  ia?: { proveedor: string; modelo: string };
   pedido?: { folio: string; total: number } | null;
   tarjetas?: Tarjeta[];
 }
@@ -237,8 +239,9 @@ export async function correrPollito(mensajes: MensajeVisible[]): Promise<TurnoPo
   );
 
   const sdk = sdkPara(cred.proveedor, cred.api);
-  if (sdk === "openai") return loopOpenAI(cred.modelo, cred.llave, visibles);
-  if (sdk === "claude") return loopClaude(cred.modelo, cred.llave, visibles);
+  const ia = { proveedor: cred.proveedor.trim().toLowerCase(), modelo: cred.modelo };
+  if (sdk === "openai") return { ...(await loopOpenAI(cred.modelo, cred.llave, visibles)), ia };
+  if (sdk === "claude") return { ...(await loopClaude(cred.modelo, cred.llave, visibles)), ia };
   throw new HlClienteError(`HL asignó a poyito el proveedor "${cred.proveedor}", que este agente no sabe correr (solo los que hablan el API de Anthropic o de OpenAI).`);
 }
 
