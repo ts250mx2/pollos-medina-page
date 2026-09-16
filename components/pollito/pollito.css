@@ -1,0 +1,104 @@
+/* ============================================================
+   poyito — Fase 1 "agente vivo": estados de la mascota, carrito y voz.
+   Los estados se eligen con [data-estado] en .poyito-mascota.
+   (Los estilos base del chat y de la mascota viven en app/globals.css.)
+   ============================================================ */
+
+/* Puntos de "pensando" (ocultos salvo en ese estado). */
+.poyito-mascota__pensar { fill: #201812; opacity: 0; transform-box: fill-box; transform-origin: bottom left; }
+
+/* ---- pensando: mira arriba, aletea nervioso, sin hablar ---- */
+.poyito-mascota[data-estado="pensando"] .poyito-mascota__personaje { animation: poyitoSway 1.6s ease-in-out infinite; }
+.poyito-mascota[data-estado="pensando"] .poyito-mascota__cabeza { animation: poyitoPiensaCabeza 1.6s ease-in-out infinite; }
+.poyito-mascota[data-estado="pensando"] .poyito-mascota__ojo { animation: poyitoOjosArriba 3s infinite; }
+.poyito-mascota[data-estado="pensando"] .poyito-mascota__ala--izq { animation: poyitoAleteoIzq .32s ease-in-out infinite alternate; }
+.poyito-mascota[data-estado="pensando"] .poyito-mascota__ala--der { animation: poyitoAleteoDer .32s ease-in-out infinite alternate; }
+.poyito-mascota[data-estado="pensando"] .poyito-mascota__pico { animation: none; }
+.poyito-mascota[data-estado="pensando"] .poyito-mascota__grito { animation: none; opacity: 0; }
+.poyito-mascota[data-estado="pensando"] .poyito-mascota__pensar { animation: poyitoPuntos 1.2s ease-in-out infinite; }
+@keyframes poyitoSway { 0%,100% { transform: rotate(-2deg); } 50% { transform: rotate(2deg) translateY(-2px); } }
+@keyframes poyitoPiensaCabeza { 0%,100% { transform: rotate(-9deg) translateY(-1px); } 50% { transform: rotate(-12deg) translateY(-2px); } }
+@keyframes poyitoOjosArriba { 0%,40%,100% { transform: translateY(-2.5px) scaleY(1); } 42% { transform: translateY(-2.5px) scaleY(.08); } 44% { transform: translateY(-2.5px) scaleY(1); } }
+@keyframes poyitoAleteoIzq { from { transform: rotate(6deg); } to { transform: rotate(-16deg); } }
+@keyframes poyitoAleteoDer { from { transform: rotate(-6deg); } to { transform: rotate(16deg); } }
+@keyframes poyitoPuntos { 0%,100% { opacity: 0; transform: scale(.7); } 30%,70% { opacity: .9; transform: scale(1); } }
+
+/* ---- hablando: pico al ritmo del texto, cabeza asiente ---- */
+.poyito-mascota[data-estado="hablando"] .poyito-mascota__personaje { animation: none; }
+.poyito-mascota[data-estado="hablando"] .poyito-mascota__sombra { animation: none; }
+.poyito-mascota[data-estado="hablando"] .poyito-mascota__cabeza { animation: poyitoAsiente .6s ease-in-out infinite; }
+.poyito-mascota[data-estado="hablando"] .poyito-mascota__ala { animation: none; }
+.poyito-mascota[data-estado="hablando"] .poyito-mascota__pico { animation: poyitoHablaRapido .22s ease-in-out infinite; }
+.poyito-mascota[data-estado="hablando"] .poyito-mascota__grito { animation: none; opacity: 0; }
+@keyframes poyitoAsiente { 0%,100% { transform: rotate(0); } 50% { transform: rotate(3deg) translateY(1px); } }
+@keyframes poyitoHablaRapido { 0%,100% { transform: scaleY(1); } 50% { transform: scaleY(1.7) translateY(2px); } }
+
+/* ---- senalando: extiende el ala derecha hacia las tarjetas ---- */
+.poyito-mascota[data-estado="senalando"] .poyito-mascota__personaje { animation: none; transform: translateX(3px) rotate(4deg); }
+.poyito-mascota[data-estado="senalando"] .poyito-mascota__cabeza { animation: none; transform: rotate(7deg); }
+.poyito-mascota[data-estado="senalando"] .poyito-mascota__ala--izq { animation: none; }
+.poyito-mascota[data-estado="senalando"] .poyito-mascota__ala--der { animation: poyitoSenala .9s ease-in-out infinite alternate; }
+.poyito-mascota[data-estado="senalando"] .poyito-mascota__pico { animation: none; }
+.poyito-mascota[data-estado="senalando"] .poyito-mascota__grito { animation: none; opacity: 0; }
+@keyframes poyitoSenala { from { transform: rotate(-70deg); } to { transform: rotate(-84deg); } }
+
+/* ---- celebrando: salta, alas arriba, ojitos felices, grita ---- */
+.poyito-mascota[data-estado="celebrando"] .poyito-mascota__personaje { animation: poyitoFiesta .55s cubic-bezier(.3,1.4,.5,1) infinite; }
+.poyito-mascota[data-estado="celebrando"] .poyito-mascota__sombra { animation: poyitoSombraFiesta .55s ease-in-out infinite; }
+.poyito-mascota[data-estado="celebrando"] .poyito-mascota__cabeza { animation: poyitoCabezaFiesta .55s ease-in-out infinite; }
+.poyito-mascota[data-estado="celebrando"] .poyito-mascota__ala--izq { animation: poyitoAlaArribaIzq .28s ease-in-out infinite alternate; }
+.poyito-mascota[data-estado="celebrando"] .poyito-mascota__ala--der { animation: poyitoAlaArribaDer .28s ease-in-out infinite alternate; }
+.poyito-mascota[data-estado="celebrando"] .poyito-mascota__ojo { animation: none; transform: scaleY(.35); }
+.poyito-mascota[data-estado="celebrando"] .poyito-mascota__pico { animation: none; transform: scaleY(1.5) translateY(2px); }
+.poyito-mascota[data-estado="celebrando"] .poyito-mascota__grito { animation: poyitoGritoFiesta .5s ease-out infinite; }
+@keyframes poyitoFiesta { 0%,100% { transform: translateY(0) scale(1); } 40% { transform: translateY(-16px) scale(1.05) rotate(-4deg); } 60% { transform: translateY(-12px) rotate(4deg); } }
+@keyframes poyitoSombraFiesta { 0%,100% { transform: scaleX(1); opacity: .7; } 45% { transform: scaleX(.55); opacity: .3; } }
+@keyframes poyitoCabezaFiesta { 0%,100% { transform: rotate(-8deg); } 50% { transform: rotate(8deg); } }
+@keyframes poyitoAlaArribaIzq { from { transform: rotate(60deg); } to { transform: rotate(80deg); } }
+@keyframes poyitoAlaArribaDer { from { transform: rotate(-60deg); } to { transform: rotate(-80deg); } }
+@keyframes poyitoGritoFiesta { 0%,100% { opacity: .4; transform: scale(.8) rotate(-6deg); } 50% { opacity: 1; transform: scale(1.15) rotate(2deg); } }
+
+/* ---- cursor de "escribiendo" en el último mensaje ---- */
+.pollito-msg--escribiendo::after { content: "▍"; margin-left: 1px; color: var(--rojo); animation: pollitoCursor .8s steps(2) infinite; }
+@keyframes pollitoCursor { to { opacity: 0; } }
+
+/* ---- tarjetas: título de promos, etiqueta, stepper de cantidad ---- */
+.pollito-cards__titulo { font-size: .7rem; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: #9d211c; margin-top: .15rem; }
+.pollito-card--en-carrito { border-color: var(--rojo); box-shadow: 0 3px 0 rgba(185,43,36,.18); }
+.pollito-card__tag { margin-left: .4rem; padding: .08rem .45rem; font-style: normal; font-size: .66rem; font-weight: 800; color: #201812; background: var(--amarillo); border-radius: 999px; vertical-align: middle; }
+.pollito-card__qty { display: inline-flex; align-items: center; gap: .35rem; flex: none; }
+.pollito-card__qty b { min-width: 1.1rem; text-align: center; font-size: .9rem; }
+.pollito-card__qty button, .pollito-carrito__ctl button { width: 26px; height: 26px; border: 1.5px solid #201812; border-radius: 8px; background: #fff; font-weight: 900; font-size: 1rem; line-height: 1; cursor: pointer; }
+.pollito-card__qty button:hover, .pollito-carrito__ctl button:hover { background: var(--amarillo); }
+
+/* ---- carrito visible con total ---- */
+.pollito-carrito { margin: .45rem .7rem 0; display: flex; flex-direction: column; background: var(--amarillo-claro); border: 2px solid #201812; border-radius: 14px; box-shadow: 3px 3px 0 #201812; overflow: hidden; animation: poyitoEntra 220ms ease-out both; }
+.pollito-carrito__resumen { display: flex; align-items: center; gap: .5rem; width: 100%; padding: .5rem .7rem; border: none; background: transparent; text-align: left; font-size: .85rem; cursor: pointer; }
+.pollito-carrito__icono { font-size: 1.05rem; }
+.pollito-carrito__txt { flex: 1; }
+.pollito-carrito__flecha { color: var(--gris); font-size: .8rem; }
+.pollito-carrito__lista { list-style: none; margin: 0; padding: .1rem .7rem .4rem; border-top: 1px dashed var(--amarillo-osc); }
+.pollito-carrito__item { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: .5rem; padding: .3rem 0; font-size: .82rem; }
+.pollito-carrito__nom { font-weight: 700; }
+.pollito-carrito__ctl { display: inline-flex; align-items: center; gap: .35rem; }
+.pollito-carrito__ctl b { min-width: 1.1rem; text-align: center; }
+.pollito-carrito__sub { font-weight: 800; color: var(--rojo); min-width: 3.2rem; text-align: right; }
+.pollito-carrito__vaciar { text-align: right; padding-top: .15rem; }
+.pollito-carrito__vaciar button { border: none; background: none; color: var(--gris); font-size: .72rem; text-decoration: underline; cursor: pointer; }
+.pollito-carrito__pedir { margin: .3rem .5rem .5rem; padding: .62rem; border: none; border-radius: 12px; background: var(--rojo); color: #fff; font-weight: 800; font-size: .92rem; cursor: pointer; box-shadow: 0 3px 0 var(--rojo-osc); transition: transform 120ms ease; }
+.pollito-carrito__pedir:hover:not(:disabled) { background: var(--rojo-osc); transform: translateY(-1px); }
+.pollito-carrito__pedir:disabled { opacity: .5; cursor: default; }
+
+/* Accesibilidad: sin movimiento si el usuario lo pide. */
+@media (prefers-reduced-motion: reduce) {
+  .poyito-mascota[data-estado] .poyito-mascota__personaje,
+  .poyito-mascota[data-estado] .poyito-mascota__sombra,
+  .poyito-mascota[data-estado] .poyito-mascota__cabeza,
+  .poyito-mascota[data-estado] .poyito-mascota__ala,
+  .poyito-mascota[data-estado] .poyito-mascota__ojo,
+  .poyito-mascota[data-estado] .poyito-mascota__pico,
+  .poyito-mascota[data-estado] .poyito-mascota__grito,
+  .poyito-mascota[data-estado] .poyito-mascota__pensar,
+  .pollito-msg--escribiendo::after,
+  .pollito-carrito { animation: none !important; }
+}
