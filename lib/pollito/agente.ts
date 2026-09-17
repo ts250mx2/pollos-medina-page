@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
-import { obtenerLlave, HlClienteError, type ApiIA } from "../hl-cliente";
+import { obtenerLlave, HlClienteError, type ApiIA, type RespaldoIA } from "../hl-cliente";
 import { menuCompleto } from "../services/menu";
 import { paraSitio as sucursalesParaSitio } from "../services/sucursales";
 import { crearPedido, type Pedido } from "../services/pedidos";
@@ -238,11 +238,35 @@ export async function correrPollito(mensajes: MensajeVisible[]): Promise<TurnoPo
     (m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.trim()
   );
 
-  const sdk = sdkPara(cred.proveedor, cred.api);
-  const ia = { proveedor: cred.proveedor.trim().toLowerCase(), modelo: cred.modelo };
-  if (sdk === "openai") return { ...(await loopOpenAI(cred.modelo, cred.llave, visibles)), ia };
-  if (sdk === "claude") return { ...(await loopClaude(cred.modelo, cred.llave, visibles)), ia };
-  throw new HlClienteError(`HL asignó a poyito el proveedor "${cred.proveedor}", que este agente no sabe correr (solo los que hablan el API de Anthropic o de OpenAI).`);
+  const correr = async (c: Pick<RespaldoIA, "proveedor" | "api" | "modelo" | "llave">): Promise<TurnoPollito> => {
+    const sdk = sdkPara(c.proveedor, c.api);
+    const ia = { proveedor: c.proveedor.trim().toLowerCase(), modelo: c.modelo };
+    if (sdk === "openai") return { ...(await loopOpenAI(c.modelo, c.llave, visibles)), ia };
+    if (sdk === "claude") return { ...(await loopClaude(c.modelo, c.llave, visibles)), ia };
+    throw new HlClienteError(`HL asignó a poyito el proveedor "${c.proveedor}", que este agente no sabe correr (solo los que hablan el API de Anthropic o de OpenAI).`);
+  };
+
+  try {
+    return await correr(cred);
+  } catch (error) {
+    // Llave de respaldo (configurada en HL): solo si el fallo es del servicio o de la cuenta, no de nuestra peticion.
+    if (!cred.respaldo || !esFalloDelServicio(error)) throw error;
+    console.warn(`[poyito] ${cred.modelo} falló (${describirError(error)}); se repite con la llave de respaldo "${cred.respaldo.nombre}" (${cred.respaldo.modelo})`);
+    return correr(cred.respaldo);
+  }
+}
+
+/** Sin conexion, timeout, limite (429), llave invalida o sin saldo (401/402/403) y errores 5xx: vale la pena reintentar con el respaldo. */
+function esFalloDelServicio(error: unknown): boolean {
+  if (error instanceof OpenAI.APIConnectionError || error instanceof Anthropic.APIConnectionError) return true;
+  const status = error instanceof OpenAI.APIError || error instanceof Anthropic.APIError ? error.status : undefined;
+  if (typeof status !== "number") return false;
+  return status === 401 || status === 402 || status === 403 || status === 408 || status === 429 || status >= 500;
+}
+
+function describirError(error: unknown): string {
+  if (error instanceof OpenAI.APIError || error instanceof Anthropic.APIError) return `${error.status ?? "sin conexión"}: ${error.message}`;
+  return error instanceof Error ? error.message : String(error);
 }
 
 // ---------- OpenAI (Responses API + function tools) ----------

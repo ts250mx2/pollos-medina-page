@@ -46,6 +46,16 @@ export interface LlaveIA {
   modelo: string;
   llave: string;
   caducidad: string | null;
+  /** Llave de respaldo del agente (si la tiene en HL): con ella se reintenta si el proveedor falla. */
+  respaldo?: RespaldoIA | null;
+}
+
+export interface RespaldoIA {
+  nombre: string;
+  proveedor: string;
+  api?: ApiIA | null;
+  modelo: string;
+  llave: string;
 }
 
 export interface HlClienteConfig {
@@ -113,6 +123,21 @@ function validarLlave(data: unknown): LlaveIA | null {
     modelo: d.modelo.trim(),
     llave: d.llave.trim(),
     caducidad: typeof d.caducidad === "string" ? d.caducidad : null,
+    respaldo: validarRespaldo(d.respaldo),
+  };
+}
+
+/** El respaldo viene con la misma forma que la llave principal; si falta o esta incompleto, no hay respaldo. */
+function validarRespaldo(data: unknown): RespaldoIA | null {
+  if (typeof data !== "object" || data === null) return null;
+  const d = data as Record<string, unknown>;
+  if (!esTexto(d.proveedor) || !esTexto(d.modelo) || !esTexto(d.llave)) return null;
+  return {
+    nombre: typeof d.nombre === "string" ? d.nombre : "respaldo",
+    proveedor: d.proveedor.trim().toLowerCase(),
+    api: d.api === "anthropic" || d.api === "openai" || d.api === "gemini" ? d.api : undefined,
+    modelo: d.modelo.trim(),
+    llave: d.llave.trim(),
   };
 }
 
