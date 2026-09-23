@@ -27,7 +27,8 @@
 .poyito-mascota[data-estado="hablando"] .poyito-mascota__personaje { animation: none; }
 .poyito-mascota[data-estado="hablando"] .poyito-mascota__sombra { animation: none; }
 .poyito-mascota[data-estado="hablando"] .poyito-mascota__cabeza { animation: poyitoAsiente .6s ease-in-out infinite; }
-.poyito-mascota[data-estado="hablando"] .poyito-mascota__ala { animation: none; }
+.poyito-mascota[data-estado="hablando"] .poyito-mascota__ala--izq,
+.poyito-mascota[data-estado="hablando"] .poyito-mascota__ala--der { animation: none; }
 .poyito-mascota[data-estado="hablando"] .poyito-mascota__pico { animation: poyitoHablaRapido .22s ease-in-out infinite; }
 .poyito-mascota[data-estado="hablando"] .poyito-mascota__grito { animation: none; opacity: 0; }
 @keyframes poyitoAsiente { 0%,100% { transform: rotate(0); } 50% { transform: rotate(3deg) translateY(1px); } }
@@ -95,6 +96,8 @@
   .poyito-mascota[data-estado] .poyito-mascota__sombra,
   .poyito-mascota[data-estado] .poyito-mascota__cabeza,
   .poyito-mascota[data-estado] .poyito-mascota__ala,
+  .poyito-mascota[data-estado] .poyito-mascota__ala--izq,
+  .poyito-mascota[data-estado] .poyito-mascota__ala--der,
   .poyito-mascota[data-estado] .poyito-mascota__ojo,
   .poyito-mascota[data-estado] .poyito-mascota__pico,
   .poyito-mascota[data-estado] .poyito-mascota__grito,
@@ -102,3 +105,20 @@
   .pollito-msg--escribiendo::after,
   .pollito-carrito { animation: none !important; }
 }
+
+/* Estados del render 3D. */
+.poyito-mascota--3d[data-estado="pensando"] .poyito-mascota__render { animation: poyito3dPiensa 1.55s ease-in-out infinite; }
+.poyito-mascota--3d[data-estado="pensando"] .poyito-mascota__pensar { animation: poyito3dPuntos 1.25s ease-in-out infinite; }
+.poyito-mascota--3d[data-estado="hablando"] .poyito-mascota__render { animation: poyito3dHabla .48s ease-in-out infinite; }
+.poyito-mascota--3d[data-estado="hablando"] .poyito-mascota__grito { animation: poyito3dVoz .48s ease-out infinite alternate; }
+.poyito-mascota--3d[data-estado="senalando"] .poyito-mascota__render { animation: poyito3dSenala .9s ease-in-out infinite alternate; }
+.poyito-mascota--3d[data-estado="celebrando"] .poyito-mascota__render { animation: poyito3dFiesta .62s cubic-bezier(.25,.8,.3,1.35) infinite; }
+.poyito-mascota--3d[data-estado="celebrando"] .poyito-mascota__sombra { animation: poyito3dSombraFiesta .62s ease-in-out infinite; }
+.poyito-mascota--3d[data-estado="celebrando"] .poyito-mascota__grito { animation: poyito3dVoz .32s ease-out infinite alternate; }
+@keyframes poyito3dPiensa { 0%,100% { transform: rotate(-2deg) translateY(0); } 50% { transform: rotate(3deg) translateY(-3px) scale(1.02); } }
+@keyframes poyito3dPuntos { 0%,100% { opacity: 0; transform: translateY(5px) scale(.72); } 32%,72% { opacity: 1; transform: none; } }
+@keyframes poyito3dHabla { 0%,100% { transform: rotate(-1deg) translateY(0) scaleY(1); } 50% { transform: rotate(2deg) translateY(-2px) scaleY(1.025); } }
+@keyframes poyito3dVoz { from { opacity: .45; transform: scale(.78) rotate(-6deg); } to { opacity: 1; transform: scale(1.08) rotate(3deg); } }
+@keyframes poyito3dSenala { from { transform: translateX(-2px) rotate(-2deg); } to { transform: translateX(3px) rotate(4deg) scale(1.025); } }
+@keyframes poyito3dFiesta { 0%,100% { transform: translateY(0) rotate(-3deg) scale(1); } 48% { transform: translateY(-14px) rotate(5deg) scale(1.055); } 68% { transform: translateY(-8px) rotate(-4deg); } }
+@keyframes poyito3dSombraFiesta { 0%,100% { transform: scaleX(1); opacity: .72; } 48% { transform: scaleX(.58); opacity: .28; } }

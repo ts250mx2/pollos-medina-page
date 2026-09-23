@@ -232,6 +232,92 @@ p { text-wrap: pretty; }
   }
   .aparece { opacity: 1; transform: none; }
 }
+
+/* Poyito 3D: render publicitario con movimiento ligero y profundidad de estudio. */
+.poyito-mascota--3d {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  display: grid;
+  place-items: center;
+  overflow: visible;
+  isolation: isolate;
+}
+.poyito-mascota--3d.poyito-mascota--compacta { width: 62px; height: 62px; }
+.poyito-mascota--3d .poyito-mascota__render {
+  position: relative;
+  z-index: 2;
+  width: 112%;
+  height: 112%;
+  display: block;
+  object-fit: contain;
+  user-select: none;
+  transform-origin: 50% 88%;
+  animation: poyito3dIdle 3.8s cubic-bezier(.45,0,.3,1) infinite;
+  filter: drop-shadow(0 5px 4px rgba(72,35,0,.27)) drop-shadow(0 1px 0 rgba(255,255,255,.35));
+  will-change: transform;
+}
+.poyito-mascota--3d .poyito-mascota__halo {
+  position: absolute;
+  z-index: 0;
+  inset: 11% 8% 8%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 42% 38%, rgba(255,246,174,.95), rgba(255,204,36,.42) 54%, transparent 72%);
+  filter: blur(5px);
+  opacity: .7;
+}
+.poyito-mascota--3d .poyito-mascota__sombra {
+  position: absolute;
+  z-index: 1;
+  left: 22%;
+  right: 16%;
+  bottom: 3%;
+  height: 10%;
+  border-radius: 50%;
+  background: rgba(67,32,0,.3);
+  filter: blur(3px);
+  transform-origin: center;
+  animation: poyito3dSombra 3.8s ease-in-out infinite;
+}
+.poyito-mascota--3d .poyito-mascota__pensar,
+.poyito-mascota--3d .poyito-mascota__grito {
+  position: absolute;
+  z-index: 4;
+  pointer-events: none;
+  opacity: 0;
+}
+.poyito-mascota--3d .poyito-mascota__pensar { top: -4%; right: -2%; width: 30%; height: 34%; }
+.poyito-mascota--3d .poyito-mascota__pensar i {
+  position: absolute; display: block; border-radius: 50%; background: #fff; border: 1.5px solid #6f2a18;
+  box-shadow: 0 2px 4px rgba(45,20,0,.18);
+}
+.poyito-mascota--3d .poyito-mascota__pensar i:nth-child(1) { width: 6px; height: 6px; left: 0; bottom: 0; }
+.poyito-mascota--3d .poyito-mascota__pensar i:nth-child(2) { width: 9px; height: 9px; left: 7px; bottom: 8px; }
+.poyito-mascota--3d .poyito-mascota__pensar i:nth-child(3) { width: 13px; height: 13px; right: 0; top: 0; }
+.poyito-mascota--3d .poyito-mascota__grito { top: 10%; right: -4%; width: 23%; height: 24%; }
+.poyito-mascota--3d .poyito-mascota__grito i {
+  position: absolute; width: 3px; height: 13px; border-radius: 999px; background: #e52b25; transform-origin: bottom;
+}
+.poyito-mascota--3d .poyito-mascota__grito i:nth-child(1) { left: 1px; bottom: 0; transform: rotate(-48deg); }
+.poyito-mascota--3d .poyito-mascota__grito i:nth-child(2) { left: 48%; top: 0; transform: rotate(-8deg); }
+.poyito-mascota--3d .poyito-mascota__grito i:nth-child(3) { right: 0; bottom: 3px; transform: rotate(55deg); }
+@keyframes poyito3dIdle {
+  0%,38%,100% { transform: translateY(0) rotate(0) scale(1); }
+  46% { transform: translateY(-7px) rotate(-3deg) scale(1.025); }
+  55% { transform: translateY(0) rotate(2deg) scaleX(1.035) scaleY(.97); }
+  66% { transform: translateY(-3px) rotate(2deg); }
+  78% { transform: translateY(0) rotate(-1deg); }
+}
+@keyframes poyito3dSombra {
+  0%,38%,55%,78%,100% { transform: scaleX(1); opacity: .75; }
+  46%,66% { transform: scaleX(.72); opacity: .4; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .poyito-mascota--3d .poyito-mascota__render,
+  .poyito-mascota--3d .poyito-mascota__sombra,
+  .poyito-mascota--3d .poyito-mascota__pensar,
+  .poyito-mascota--3d .poyito-mascota__grito { animation: none !important; }
+}
 /* ============================================================
    Pollo Medina â€” Componentes reutilizables
    ============================================================ */
@@ -1543,28 +1629,37 @@ p { text-wrap: pretty; }
 .pollito__barra button:disabled { opacity: 0.5; cursor: default; }
 
 /* Mascota vectorial: no depende de emojis del sistema y conserva la identidad en todos los dispositivos. */
-.poyito-mascota { width: 72px; height: 68px; flex: none; display: block; overflow: visible; }
+.poyito-mascota { width: 78px; height: 76px; flex: none; display: block; overflow: visible; isolation: isolate; }
 .poyito-mascota svg { display: block; width: 100%; height: 100%; overflow: visible; }
-.poyito-mascota--compacta { width: 59px; height: 55px; }
+.poyito-mascota--compacta { width: 61px; height: 59px; }
 .poyito-mascota__personaje { animation: poyitoBaila 3.2s cubic-bezier(.45,0,.3,1) infinite; transform-box: fill-box; transform-origin: center bottom; will-change: transform; }
-.poyito-mascota__sombra { fill: rgba(58,34,4,.25); filter: blur(2px); animation: poyitoSombra 3.2s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
-.poyito-mascota__cuerpo { fill: url(#poyitoBody); stroke: #5e3505; stroke-width: 3.5; }
-.poyito-mascota__panza { fill: #fff3a7; opacity: .72; }
-.poyito-mascota__cara { fill: url(#poyitoHead); stroke: #5e3505; stroke-width: 3.5; }
+.poyito-mascota__sombra { fill: rgba(58,34,4,.32); filter: blur(3px); animation: poyitoSombra 3.2s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+.poyito-mascota__cuerpo { fill: url(#poyitoBody); stroke: #713f04; stroke-width: 2.8; filter: url(#poyitoInner); }
+.poyito-mascota__panza { fill: url(#poyitoBelly); }
+.poyito-mascota__pecho { fill: none; stroke: rgba(172,105,0,.28); stroke-width: 1.8; stroke-linecap: round; }
+.poyito-mascota__cara { fill: url(#poyitoHead); stroke: #713f04; stroke-width: 2.8; filter: url(#poyitoInner); }
 .poyito-mascota__cabeza { animation: poyitoCabeza 3.2s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 85%; }
-.poyito-mascota__cresta { fill: #e83d31; stroke: #6b251c; stroke-width: 3.5; stroke-linejoin: round; }
-.poyito-mascota__ala { fill: url(#poyitoWing); stroke: #754602; stroke-width: 3.5; stroke-linejoin: round; }
+.poyito-mascota__cresta { fill: url(#poyitoComb); stroke: #7d1b18; stroke-width: 2.8; stroke-linejoin: round; }
+.poyito-mascota__cresta-luz { fill: none; stroke: rgba(255,255,255,.42); stroke-width: 3; stroke-linecap: round; }
+.poyito-mascota__ala { fill: url(#poyitoWing); stroke: #754602; stroke-width: 2.8; stroke-linejoin: round; filter: url(#poyitoInner); }
 .poyito-mascota__ala--izq { animation: poyitoAlaIzq 3.2s ease-in-out infinite; transform-box: fill-box; transform-origin: right center; }
 .poyito-mascota__ala--der { animation: poyitoAlaDer 3.2s ease-in-out infinite; transform-box: fill-box; transform-origin: left center; }
 .poyito-mascota__ojo { transform-box: fill-box; transform-origin: center; animation: poyitoParpadea 3.2s infinite; }
-.poyito-mascota__ojo ellipse { fill: #28170b; }
-.poyito-mascota__ojo circle { fill: white; }
+.poyito-mascota__ojo > ellipse:first-child { fill: #fffdf5; stroke: #6b430d; stroke-width: 1.5; }
+.poyito-mascota__ojo .poyito-mascota__iris { fill: url(#poyitoEye); stroke: none; }
+.poyito-mascota__brillo-ojo, .poyito-mascota__brillo-ojo--mini { fill: white; }
 .poyito-mascota__mejilla { fill: #f47e57; opacity: .72; }
+.poyito-mascota__mascara { fill: rgba(255,255,255,.14); }
 .poyito-mascota__ceja { fill: none; stroke: #6b3b05; stroke-width: 3; stroke-linecap: round; }
-.poyito-mascota__pico { fill: url(#poyitoBeak); stroke: #873b0c; stroke-width: 2.7; stroke-linejoin: round; animation: poyitoHabla 3.2s ease-in-out infinite; transform-box: fill-box; transform-origin: top center; }
+.poyito-mascota__pico { fill: url(#poyitoBeak); stroke: #873b0c; stroke-width: 2.4; stroke-linejoin: round; animation: poyitoHabla 3.2s ease-in-out infinite; transform-box: fill-box; transform-origin: top center; }
 .poyito-mascota__pico path:last-child { filter: brightness(.86); }
-.poyito-mascota__patas { fill: none; stroke: #b85512; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
+.poyito-mascota__pico .poyito-mascota__pico-luz { fill: none; stroke: rgba(255,255,255,.55); stroke-width: 2; stroke-linecap: round; filter: none; }
+.poyito-mascota__patas { fill: none; stroke: #b85512; stroke-width: 6; stroke-linecap: round; stroke-linejoin: round; }
+.poyito-mascota__patas .poyito-mascota__patas-luz { stroke: rgba(255,214,116,.7); stroke-width: 2; }
 .poyito-mascota__luz { fill: none; stroke: white; stroke-width: 5; stroke-linecap: round; opacity: .5; }
+.poyito-mascota__cara-luz { fill: none; stroke: rgba(255,255,255,.62); stroke-width: 4; stroke-linecap: round; }
+.poyito-mascota__plumitas { fill: none; stroke: rgba(116,67,0,.3); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.poyito-mascota__ala-pluma { fill: none; stroke: rgba(119,67,0,.27); stroke-width: 2; stroke-linecap: round; pointer-events: none; }
 .poyito-mascota__grito { fill: none; stroke: #e83d31; stroke-width: 5; stroke-linecap: round; animation: poyitoGrito 3.2s ease-out infinite; transform-box: fill-box; transform-origin: bottom left; }
 @keyframes poyitoBaila { 0%,38%,100% { transform: translateY(0) rotate(0) scale(1); } 48% { transform: translateY(-13px) rotate(-7deg) scale(1.04); } 58% { transform: translateY(1px) rotate(4deg) scaleX(1.08) scaleY(.91); } 68% { transform: translateY(-7px) rotate(5deg); } 78% { transform: translateY(0) rotate(-3deg); } 87% { transform: rotate(2deg); } }
 @keyframes poyitoSombra { 0%,38%,58%,78%,100% { transform: scaleX(1); opacity: .7; } 48%,68% { transform: scaleX(.58); opacity: .32; } }
@@ -1577,6 +1672,6 @@ p { text-wrap: pretty; }
 @keyframes poyitoHola { 0%,16% { opacity: 0; transform: scale(.7) rotate(4deg); } 23%,72% { opacity: 1; transform: scale(1) rotate(0); } 82%,100% { opacity: 0; transform: scale(.85) translateY(4px); } }
 @keyframes poyitoEntra { from { opacity: 0; transform: translateY(16px) scale(.96); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) {
-  .poyito-mascota__personaje, .poyito-mascota__sombra, .poyito-mascota__cabeza, .poyito-mascota__ala, .poyito-mascota__ojo, .poyito-mascota__pico, .poyito-mascota__grito, .pollito-fab__burbuja, .pollito { animation: none !important; }
+  .poyito-mascota__personaje, .poyito-mascota__sombra, .poyito-mascota__cabeza, .poyito-mascota__ala, .poyito-mascota__ala--izq, .poyito-mascota__ala--der, .poyito-mascota__ojo, .poyito-mascota__pico, .poyito-mascota__grito, .pollito-fab__burbuja, .pollito { animation: none !important; }
   .pollito-fab { transition: none; }
 }

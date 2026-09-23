@@ -22,3 +22,7 @@ Thumbs.db
 wansoft-scraper/.chrome-profile/
 wansoft-scraper/dumps/
 wansoft-scraper/screenshots/
+
+# capturas y perfiles de Chrome de pruebas locales
+.chrome-preview*/
+/poyito-*.png
